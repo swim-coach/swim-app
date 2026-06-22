@@ -1,0 +1,2156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>コンディション記録</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.35.0/tabler-icons.min.css">
+<style>
+  :root{
+    --orange:#854F0B; --orange-bg:#FAEEDA; --orange-bd:#E8C078;
+    --blue:#185FA5; --blue-bg:#E6F1FB;
+    --green:#27500A; --green-bg:#EAF3DE;
+    --red:#A32D2D; --red-bg:#FCEBEB;
+    --ink:#2B2B2B; --sub:#6E6E73; --line:#E5E1D8;
+    --bg:#FBFAF7; --card:#FFFFFF;
+    --am:#B5530A; --am-bg:#FDEFDC; --am-bd:#EFC08A;
+    --pm:#3A3D8F; --pm-bg:#EAEAFA; --pm-bd:#B9B7E8;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink);
+    padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);overscroll-behavior-y:contain}
+  .wrap{max-width:480px;margin:0 auto;padding:18px 16px 40px}
+  .hdr{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .hdr-icon{width:34px;height:34px;border-radius:10px;background:var(--orange-bg);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;overflow:hidden}
+  .hdr-icon img{width:100%;height:100%;object-fit:cover;display:block}
+  .hdr-name{font-size:17px;font-weight:700}
+  .hdr-date{font-size:12px;color:var(--sub);margin-top:1px}
+  .lead{font-size:12px;color:var(--sub);margin:14px 2px 18px;line-height:1.6}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.03)}
+  .card-label{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+  .card-sub{font-size:11px;color:var(--sub);font-weight:400;margin-left:auto}
+
+  /* 練習参加トグル */
+  .toggle-row{display:flex;gap:8px}
+  .toggle-btn{flex:1;padding:14px 10px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);
+    font-size:14px;font-weight:600;color:var(--sub);cursor:pointer;transition:all .15s;text-align:center}
+  .toggle-btn.active.yes{background:var(--green-bg);border-color:#9CC97A;color:var(--green)}
+  .toggle-btn.active.no{background:var(--red-bg);border-color:#E8A0A0;color:var(--red)}
+
+  /* 練習タイプ（単一選択） */
+  .sess-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .sess-btn{padding:16px 10px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);
+    cursor:pointer;transition:all .15s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px}
+  .sess-btn .ic{font-size:24px;line-height:1;color:var(--sub)}
+  .sess-btn .lb{font-size:12.5px;font-weight:600;color:var(--sub)}
+  .sess-btn.active{background:var(--orange-bg);border-color:var(--orange-bd)}
+  .sess-btn.active .ic{color:var(--orange)}
+  .sess-btn.active .lb{color:var(--orange)}
+  /* 午前練習＝サンライズカラー、午後練習＝サンセットカラーで区別 */
+  #sess-grid .sess-btn[data-val="AM"].active{background:var(--am-bg);border-color:var(--am-bd)}
+  #sess-grid .sess-btn[data-val="AM"].active .ic{color:var(--am)}
+  #sess-grid .sess-btn[data-val="AM"].active .lb{color:var(--am)}
+  #sess-grid .sess-btn[data-val="PM"].active{background:var(--pm-bg);border-color:var(--pm-bd)}
+  #sess-grid .sess-btn[data-val="PM"].active .ic{color:var(--pm)}
+  #sess-grid .sess-btn[data-val="PM"].active .lb{color:var(--pm)}
+  .sess-none-btn{margin-top:8px;width:100%;padding:11px;border-radius:10px;border:1.5px dashed var(--line);background:transparent;
+    font-size:12.5px;font-weight:600;color:var(--sub);cursor:pointer;text-align:center}
+  .sess-none-btn.active{background:var(--red-bg);border-color:#E8A0A0;border-style:solid;color:var(--red)}
+
+  /* サブカード（グループ／時間／種別の追加選択） */
+  .sub-card{display:none;animation:fadeIn .2s ease}
+  .sub-card.show{display:block}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+
+  /* グループ選択 */
+  .grp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .grp-btn{padding:12px 4px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);
+    font-size:13px;font-weight:700;color:var(--sub);cursor:pointer;transition:all .15s;text-align:center}
+  .grp-btn.active{background:var(--orange-bg);border-color:var(--orange-bd);color:var(--orange)}
+
+  /* 自主練習：実施時間スライダー（30分刻み） */
+  .dur-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .dur-btn{padding:12px 4px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);
+    font-size:12.5px;font-weight:700;color:var(--sub);cursor:pointer;transition:all .15s;text-align:center}
+  .dur-btn.active{background:var(--blue-bg);border-color:#8FBEE8;color:var(--blue)}
+
+  /* 陸上トレーニング種別 */
+  .land-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  .land-btn-wrap{position:relative}
+  .land-btn{width:100%;padding:12px 8px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);
+    font-size:13px;font-weight:700;color:var(--sub);cursor:pointer;transition:all .15s;text-align:center}
+  .land-btn.active{background:#EEEDFE;border-color:#B7B1EE;color:#3C3489}
+  .land-btn.fixed{padding-right:8px}
+  .land-del-x{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--red);
+    color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;border:2px solid var(--bg);line-height:1;z-index:2}
+  .land-add-btn{padding:12px 8px;border-radius:10px;border:1.5px dashed var(--line);background:transparent;
+    font-size:13px;font-weight:700;color:var(--sub);cursor:pointer;text-align:center;width:100%}
+  .land-add-row{display:none;gap:6px;margin-top:8px}
+  .land-add-row.show{display:flex}
+  .land-add-input{flex:1;border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;font-size:13px;
+    font-family:inherit;background:var(--bg);color:var(--ink);box-sizing:border-box}
+  .land-add-input:focus{outline:none;border-color:var(--orange-bd)}
+  .land-add-ok{padding:0 16px;border-radius:10px;border:none;background:var(--orange);color:#fff;
+    font-size:13px;font-weight:700;cursor:pointer}
+  .land-edit-hint{font-size:10px;color:var(--sub);margin-top:8px;line-height:1.6}
+
+  /* 疲労度（顔アイコン） */
+  .face-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .face-btn{padding:10px 2px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);
+    cursor:pointer;transition:all .15s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px}
+  .face-btn .emoji{font-size:22px;line-height:1}
+  .face-btn .num{font-size:10px;color:var(--sub);font-weight:600}
+  .face-btn.active{background:var(--blue-bg);border-color:#8FBEE8}
+  .face-btn.active .num{color:var(--blue)}
+
+  /* RPE（絵文字＋スライダー形式。午前/午後/自主練習/陸上それぞれの中に置く） */
+  .rpe-emoji-row{display:flex;justify-content:space-between;padding:0 4px;margin-bottom:2px}
+  .rpe-emoji{font-size:24px;opacity:0.32;transform:scale(0.85);transition:all .15s;line-height:1}
+  .rpe-emoji.active{opacity:1;transform:scale(1.2)}
+  .rpe-val{font-size:22px;font-weight:800;color:var(--orange);text-align:center;margin:6px 0 2px}
+  .rpe-val .unit{font-size:12px;font-weight:500;color:var(--sub);margin-left:2px}
+
+  /* スライダー（栄養） */
+  .slider-wrap{padding:4px 2px 0}
+  .slider-val{font-size:28px;font-weight:800;color:var(--orange);text-align:center;margin-bottom:6px}
+  .slider-val.nutri{color:#0F6E56}
+  .slider-val .unit{font-size:13px;font-weight:500;color:var(--sub);margin-left:3px}
+  input[type=range]{width:100%;height:6px;border-radius:3px;background:var(--line);outline:none;-webkit-appearance:none;margin:8px 0}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:var(--orange);
+    box-shadow:0 2px 6px rgba(133,79,11,0.35);cursor:pointer}
+  input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:var(--orange);border:none;box-shadow:0 2px 6px rgba(133,79,11,0.35);cursor:pointer}
+  input[type=range].nutri::-webkit-slider-thumb{background:#0F6E56;box-shadow:0 2px 6px rgba(15,110,86,0.35)}
+  input[type=range].nutri::-moz-range-thumb{background:#0F6E56;box-shadow:0 2px 6px rgba(15,110,86,0.35)}
+  input[type=range].rpe-am::-webkit-slider-thumb{background:var(--am);box-shadow:0 2px 6px rgba(181,83,10,0.35)}
+  input[type=range].rpe-am::-moz-range-thumb{background:var(--am);box-shadow:0 2px 6px rgba(181,83,10,0.35)}
+  input[type=range].rpe-pm::-webkit-slider-thumb{background:var(--pm);box-shadow:0 2px 6px rgba(58,61,143,0.35)}
+  input[type=range].rpe-pm::-moz-range-thumb{background:var(--pm);box-shadow:0 2px 6px rgba(58,61,143,0.35)}
+  .slider-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--sub);padding:0 2px}
+
+  /* 睡眠時間ステッパー */
+  .stepper{display:flex;align-items:center;justify-content:center;gap:18px}
+  .step-btn{width:42px;height:42px;border-radius:50%;border:1.5px solid var(--line);background:var(--bg);
+    font-size:20px;font-weight:700;color:var(--orange);display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .step-val{font-size:26px;font-weight:800;min-width:80px;text-align:center}
+  .step-val .unit{font-size:13px;font-weight:500;color:var(--sub)}
+
+  /* 体重ステッパー（小型・複数並び用） */
+  .weight-row{display:flex;gap:10px}
+  .weight-box{flex:1;background:var(--bg);border:1.5px solid var(--line);border-radius:12px;padding:10px 6px;text-align:center}
+  .weight-box-label{font-size:10.5px;color:var(--sub);font-weight:600;margin-bottom:6px}
+  .weight-stepper{display:flex;align-items:center;justify-content:center;gap:8px}
+  .weight-step-btn{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);background:var(--card);
+    font-size:15px;font-weight:700;color:var(--orange);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+  .weight-step-val{font-size:17px;font-weight:800;min-width:48px;text-align:center}
+  .weight-step-val .unit{font-size:10px;font-weight:500;color:var(--sub);display:block;margin-top:-1px}
+  .weight-prev-hint{font-size:9.5px;color:var(--sub);margin-top:6px;text-align:center;min-height:12px}
+  .step-prev-hint{text-align:center;font-size:10.5px;color:var(--sub);margin-top:8px;min-height:13px}
+
+  /* ══ 体重：測定有無チェック・測定時刻選択 ══ */
+  .weight-measured-toggle{display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer}
+  .weight-measured-toggle input[type="checkbox"]{width:18px;height:18px;accent-color:var(--orange);cursor:pointer;flex-shrink:0}
+  .weight-time-hint{font-size:11px;color:var(--sub);margin-bottom:10px}
+  .weight-time-row{display:flex;gap:8px}
+  .weight-time-btn{flex:1;padding:9px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);
+    font-size:12.5px;font-weight:600;color:var(--sub);text-align:center;cursor:pointer}
+  .weight-time-btn.active{background:var(--orange-bg);border-color:var(--orange-bd);color:var(--orange)}
+  .weight-time-input{margin-top:10px;width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;
+    font-size:14px;font-family:inherit;background:var(--bg);color:var(--ink);box-sizing:border-box}
+  .weight-time-input:focus{outline:none;border-color:var(--orange-bd)}
+
+  textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;
+    font-family:inherit;resize:vertical;min-height:56px;background:var(--bg);color:var(--ink)}
+  textarea:focus{outline:none;border-color:var(--orange-bd)}
+
+  .submit-btn{width:100%;padding:16px;border-radius:14px;border:none;background:var(--orange);color:#fff;
+    font-size:15px;font-weight:700;cursor:pointer;margin-top:6px;box-shadow:0 4px 14px rgba(133,79,11,0.25);
+    display:flex;align-items:center;justify-content:center;gap:8px}
+  .submit-btn:disabled{background:#C9BFA8;box-shadow:none}
+  .submit-btn:active{transform:scale(0.98)}
+  .cancel-edit-btn{width:100%;padding:11px;border-radius:12px;border:1.5px solid var(--line);background:transparent;
+    font-size:12.5px;font-weight:600;color:var(--sub);cursor:pointer;margin-top:8px;display:none}
+  .cancel-edit-btn.show{display:block}
+
+  .editing-banner{background:var(--blue-bg);color:var(--blue);padding:10px 14px;border-radius:12px;font-size:12px;
+    line-height:1.6;margin-bottom:14px;display:none;align-items:center;gap:8px}
+  .editing-banner.show{display:flex}
+
+  .status-banner{padding:12px 14px;border-radius:12px;font-size:12.5px;line-height:1.6;margin-bottom:14px;display:none}
+  .status-banner.show{display:block}
+  .status-ok{background:var(--green-bg);color:var(--green)}
+  .status-err{background:var(--red-bg);color:var(--red)}
+  .status-info{background:var(--blue-bg);color:var(--blue)}
+
+  .hist{margin-top:24px}
+  .hist-title{font-size:12px;font-weight:700;color:var(--sub);margin-bottom:8px;padding:0 2px}
+  .hist-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--card);border:1px solid var(--line);
+    border-radius:10px;margin-bottom:6px;font-size:11.5px;cursor:pointer;transition:background .12s}
+  .hist-item:active{background:var(--bg)}
+  .hist-date{font-weight:700;color:var(--ink);min-width:46px}
+  .hist-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .hist-tag{color:var(--sub)}
+  .hist-edit-ic{color:var(--sub);font-size:12px;flex-shrink:0}
+
+  .success-overlay{position:fixed;inset:0;background:rgba(251,250,247,0.96);display:none;align-items:center;justify-content:center;
+    flex-direction:column;gap:14px;z-index:999;padding:24px;text-align:center}
+  .success-overlay.show{display:flex}
+  .success-circle{width:72px;height:72px;border-radius:50%;background:var(--green-bg);display:flex;align-items:center;justify-content:center;font-size:36px}
+  .success-text{font-size:16px;font-weight:700}
+  .success-sub{font-size:12px;color:var(--sub);white-space:pre-line;line-height:1.6}
+
+  .config-warn{background:var(--red-bg);color:var(--red);padding:14px;border-radius:12px;font-size:12px;line-height:1.7;margin-bottom:16px}
+
+  /* ══ Strengthビルダー（フルスクリーンモーダル） ══ */
+  .str-modal{position:fixed;inset:0;background:var(--bg);z-index:2000;display:none;flex-direction:column;
+    padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+  .str-modal.show{display:flex}
+  .str-modal-hdr{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);flex-shrink:0}
+  .str-modal-hdr h2{font-size:15px;font-weight:700;margin:0;flex:1}
+  .str-back-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--line);background:var(--card);
+    display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;flex-shrink:0;color:var(--ink)}
+  .str-modal-body{flex:1;overflow-y:auto;padding:14px 16px;-webkit-overflow-scrolling:touch}
+
+  /* 種目検索リスト */
+  .str-search-box{position:relative;margin-bottom:12px}
+  .str-search-input{width:100%;padding:11px 14px 11px 36px;border-radius:12px;border:1.5px solid var(--line);
+    background:var(--card);font-size:14px;color:var(--ink);box-sizing:border-box}
+  .str-search-input:focus{outline:none;border-color:var(--orange-bd)}
+  .str-search-ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--sub);font-size:14px}
+
+  .str-ex-item{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:9px;
+    cursor:pointer;transition:border-color .12s}
+  .str-ex-item:active{border-color:var(--orange-bd)}
+  .str-ex-name{font-size:14px;font-weight:600;margin-bottom:6px}
+  .str-ex-muscles{display:flex;flex-wrap:wrap;gap:5px}
+  .str-mtag{font-size:10px;padding:2px 8px;border-radius:10px;display:flex;align-items:center;gap:4px}
+  .str-mtag .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .str-mtag.m1{background:#FCEBEB;color:#A32D2D}
+  .str-mtag.m1 .dot{background:#D14545}
+  .str-mtag.m2{background:var(--green-bg);color:var(--green)}
+  .str-mtag.m2 .dot{background:#5A9A2E}
+  .str-mtag.m3{background:var(--orange-bg);color:var(--orange)}
+  .str-mtag.m3 .dot{background:#D6A23A}
+
+  .str-add-ex-btn{width:100%;padding:13px;border-radius:14px;border:1.5px dashed var(--line);background:transparent;
+    font-size:13.5px;font-weight:600;color:var(--sub);cursor:pointer;margin-top:6px}
+  .str-add-ex-row{display:none;gap:6px;margin-top:8px}
+  .str-add-ex-row.show{display:flex}
+
+  /* 選んだ種目一覧（その日の記録） */
+  .str-today-title{font-size:12px;font-weight:700;color:var(--sub);margin:18px 2px 8px}
+  .str-today-item{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:8px;
+    display:flex;align-items:center;gap:10px;cursor:pointer}
+  .str-today-item-name{font-size:13px;font-weight:600;flex:1}
+  .str-today-item-sets{font-size:11px;color:var(--sub)}
+  .str-today-del{width:26px;height:26px;border-radius:50%;background:var(--red-bg);color:var(--red);
+    display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;flex-shrink:0}
+
+  .str-done-btn{width:100%;padding:15px;border-radius:14px;border:none;background:var(--orange);color:#fff;
+    font-size:14.5px;font-weight:700;cursor:pointer;margin-top:16px}
+
+  /* 種目詳細：セット入力画面 */
+  .str-detail-hdr-card{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+  .str-detail-name{font-size:16px;font-weight:700;margin-bottom:10px}
+  .str-detail-muscles{display:flex;flex-direction:column;gap:6px}
+
+  .str-set-row{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+  .str-set-num{width:26px;height:26px;border-radius:50%;background:var(--card);border:1.5px solid var(--line);
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--sub);flex-shrink:0}
+  .str-set-inputs{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .str-set-field{background:var(--blue-bg);border-radius:12px;padding:6px 4px;display:flex;align-items:center;justify-content:space-between;gap:2px}
+  .str-set-stepper-btn{width:26px;height:26px;border-radius:8px;border:none;background:rgba(255,255,255,0.6);
+    color:var(--blue);font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;flex-shrink:0;line-height:1}
+  .str-set-stepper-btn:active{background:rgba(255,255,255,0.9)}
+  .str-set-val-wrap{flex:1;text-align:center;min-width:0}
+  .str-set-val{font-size:18px;font-weight:800;color:var(--blue);line-height:1}
+  .str-set-field .unit{font-size:9px;color:var(--blue);opacity:0.75;margin-top:1px}
+  .str-set-toggle{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line);background:var(--card);
+    display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;flex-shrink:0;color:var(--sub)}
+  .str-set-toggle.done{background:var(--green-bg);border-color:#9CC97A;color:var(--green)}
+  .str-set-del{width:24px;height:24px;border-radius:50%;background:transparent;color:var(--sub);
+    display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;flex-shrink:0}
+
+  .str-set-actions{display:flex;gap:8px;margin-top:6px}
+  .str-set-action-btn{flex:1;padding:10px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);
+    font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer;text-align:center}
+
+  .str-save-ex-btn{width:100%;padding:14px;border-radius:14px;border:none;background:var(--orange);color:#fff;
+    font-size:14px;font-weight:700;cursor:pointer;margin-top:18px}
+
+  /* ══ 午前／午後ボックスの配色（選んだボタンの色とそろえる） ══ */
+  #group-card-am{background:var(--am-bg);border-color:var(--am-bd)}
+  #group-card-am .card-label{color:var(--am)}
+  #group-card-am .grp-btn.active{background:var(--card);border-color:var(--am);color:var(--am)}
+  #group-card-am .weight-box{background:var(--card);border-color:var(--am-bd)}
+  #group-card-am .weight-step-btn{border-color:var(--am-bd);color:var(--am)}
+
+  #group-card-pm{background:var(--pm-bg);border-color:var(--pm-bd)}
+  #group-card-pm .card-label{color:var(--pm)}
+  #group-card-pm .grp-btn.active{background:var(--card);border-color:var(--pm);color:var(--pm)}
+  #group-card-pm .weight-box{background:var(--card);border-color:var(--pm-bd)}
+  #group-card-pm .weight-step-btn{border-color:var(--pm-bd);color:var(--pm)}
+
+  /* ══ 履歴：タブ切り替え（リスト／カレンダー／グラフ） ══ */
+  .hist-tabs{display:flex;gap:6px;margin-bottom:12px}
+  .hist-tab{flex:1;padding:9px 4px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);
+    font-size:12px;font-weight:600;color:var(--sub);cursor:pointer;text-align:center}
+  .hist-tab.active{background:var(--orange-bg);border-color:var(--orange-bd);color:var(--orange)}
+
+  /* カレンダー */
+  .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .cal-nav-btn{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);background:var(--card);
+    display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--ink);cursor:pointer}
+  .cal-month-label{font-size:13.5px;font-weight:700}
+  .cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:10px;color:var(--sub);margin-bottom:4px}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+  .cal-cell{aspect-ratio:1;border-radius:8px;border:1px solid var(--line);background:var(--card);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--ink);cursor:pointer}
+  .cal-cell-blank{visibility:hidden;cursor:default}
+  .cal-cell-has-entry{border-color:var(--orange-bd)}
+  .cal-cell-today{border-color:var(--orange);border-width:1.5px}
+  .cal-daynum{font-weight:600}
+  .cal-dots{display:flex;gap:2px;min-height:5px}
+  .cal-dot{width:5px;height:5px;border-radius:50%;display:inline-block}
+  .cal-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:10px;color:var(--sub)}
+  .cal-legend span{display:inline-flex;align-items:center;gap:4px}
+  .cal-legend .cal-dot{width:7px;height:7px}
+  #cal-day-detail{margin-top:12px}
+  .cal-detail-title{font-size:12px;font-weight:700;color:var(--sub);margin-bottom:8px}
+
+  /* グラフ */
+  .graph-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  .graph-title{font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+  .graph-legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:6px}
+  .graph-legend span{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--sub)}
+  .graph-legend-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
+
+  /* ══ 筋トレ履歴（種目別セット・推定1RM） ══ */
+  .strength-day-card{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden}
+  .strength-day-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer}
+  .strength-day-date{font-size:13px;font-weight:700;color:var(--ink)}
+  .strength-day-toggle{font-size:12px;color:var(--sub)}
+  .strength-day-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:0 14px 12px}
+  .strength-day-stats > div{text-align:center;background:var(--orange-bg);border-radius:8px;padding:6px 2px}
+  .strength-day-stats .num{display:block;font-size:14px;font-weight:800;color:var(--orange)}
+  .strength-day-stats .lbl{display:block;font-size:9px;color:var(--sub);margin-top:1px}
+  .strength-day-detail{padding:0 14px 14px;border-top:1px solid var(--line)}
+  .strength-ex-block{margin-top:12px}
+  .strength-ex-name{font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:6px}
+  .strength-set-table{display:flex;flex-direction:column;gap:3px}
+  .strength-set-row{display:grid;grid-template-columns:0.7fr 1.1fr 0.9fr 1.1fr 1.2fr;font-size:11px;color:var(--ink);
+    padding:5px 6px;border-radius:6px}
+  .strength-set-row-head{font-size:10px;color:var(--sub);font-weight:700}
+  .strength-set-row:not(.strength-set-row-head):nth-child(odd){background:var(--bg)}
+
+  /* ══ 記録する日付の選択（過去日付の新規入力・確認用） ══ */
+  .date-picker-row{display:flex;align-items:center;gap:10px}
+  .date-nav-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--line);background:var(--bg);
+    display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--ink);cursor:pointer;flex-shrink:0;user-select:none}
+  .date-nav-btn.disabled{opacity:0.3;pointer-events:none}
+  .date-picker-input{flex:1;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;
+    font-family:inherit;background:var(--bg);color:var(--ink);box-sizing:border-box}
+  .date-picker-input:focus{outline:none;border-color:var(--orange-bd)}
+  .date-today-btn{width:100%;margin-top:10px;padding:10px;border-radius:10px;border:1.5px solid #8FBEE8;
+    background:var(--blue-bg);color:var(--blue);font-size:12.5px;font-weight:700;cursor:pointer}
+  #date-existing-list{margin-top:10px}
+  #date-existing-list .hist-item{margin-bottom:6px}
+  .cal-add-entry-btn{width:100%;padding:11px;border-radius:10px;border:1.5px dashed var(--line);background:transparent;
+    font-size:12.5px;font-weight:600;color:var(--sub);cursor:pointer;margin-top:8px;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="hdr">
+    <div class="hdr-icon" id="hdr-icon"><img id="hdr-icon-img" src="data:image/jpeg;base64,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" alt=""></div>
+    <div>
+      <div class="hdr-name" id="player-name">選手名を読込中…</div>
+      <div class="hdr-date" id="today-date"></div>
+    </div>
+  </div>
+  <div class="lead">今日の練習について教えてください。タップ・スライドだけで完了します。</div>
+
+  <div id="config-warn" class="config-warn" style="display:none">
+    Firebase設定が未完了です。<br>このファイル内の <code>firebaseConfig</code> に、設定手順書で取得した値を貼り付けてください。
+  </div>
+
+  <div id="editing-banner" class="editing-banner">
+    <span>✏️</span><span id="editing-banner-text">この記録を編集しています</span>
+  </div>
+
+  <div id="status-banner" class="status-banner"></div>
+
+  <form id="cond-form">
+    <!-- 記録する日付（過去の日付を選んで新規入力・確認ができる） -->
+    <div class="card" id="date-picker-card">
+      <div class="card-label">記録する日付<span class="card-sub" id="date-weekday-label"></span></div>
+      <div class="date-picker-row">
+        <div class="date-nav-btn" onclick="changeSelectedDate(-1)">‹</div>
+        <input type="date" id="date-picker-input" class="date-picker-input" onchange="onDatePickerChange(this.value)">
+        <div class="date-nav-btn" id="date-nav-next-btn" onclick="changeSelectedDate(1)">›</div>
+      </div>
+      <button type="button" class="date-today-btn" id="date-today-btn" onclick="jumpToToday()" style="display:none">今日の記録に戻る</button>
+      <div id="date-existing-list"></div>
+    </div>
+
+    <!-- 練習タイプ（単一選択） -->
+    <div class="card">
+      <div class="card-label">今日参加した練習を選んでください</div>
+      <div class="sess-grid" id="sess-grid">
+        <div class="sess-btn" data-val="AM" onclick="selectSession('AM')"><span class="ic" data-swim-ic><i class="ti ti-swimming"></i></span><span class="lb">午前練習</span></div>
+        <div class="sess-btn" data-val="PM" onclick="selectSession('PM')"><span class="ic" data-swim-ic><i class="ti ti-swimming"></i></span><span class="lb">午後練習</span></div>
+        <div class="sess-btn" data-val="JISHU" onclick="selectSession('JISHU')"><span class="ic" data-swim-ic><i class="ti ti-swimming"></i></span><span class="lb">自主練習</span></div>
+        <div class="sess-btn" data-val="LAND" onclick="selectSession('LAND')"><span class="ic"><i class="ti ti-barbell"></i></span><span class="lb">陸上トレーニング</span></div>
+      </div>
+      <div class="sess-none-btn" id="sess-none-btn" onclick="selectSession('NONE')">今日は休んだ</div>
+    </div>
+
+    <!-- グループ選択＋体重（午前練習） -->
+    <div class="card sub-card" id="group-card-am">
+      <div class="card-label">午前練習は、どのグループで参加しましたか？<span class="card-sub" id="group-card-am-sub"></span></div>
+      <div class="grp-grid" id="group-grid-am"></div>
+      <div class="card-label" style="margin-top:16px;font-size:12.5px">練習のきつさ（RPE）</div>
+      <div class="rpe-widget" id="rpe-widget-am"></div>
+    </div>
+
+    <!-- グループ選択（午後練習） -->
+    <div class="card sub-card" id="group-card-pm">
+      <div class="card-label">午後練習は、どのグループで参加しましたか？<span class="card-sub" id="group-card-pm-sub"></span></div>
+      <div class="grp-grid" id="group-grid-pm"></div>
+      <div class="card-label" style="margin-top:16px;font-size:12.5px">練習のきつさ（RPE）</div>
+      <div class="rpe-widget" id="rpe-widget-pm"></div>
+    </div>
+
+    <!-- 自主練習：実施時間（30分刻み） -->
+    <div class="card sub-card" id="duration-card">
+      <div class="card-label">どのくらい実施しましたか？</div>
+      <div class="dur-grid" id="duration-grid">
+        <div class="dur-btn" data-val="0.5" onclick="setDuration(0.5)">30分</div>
+        <div class="dur-btn" data-val="1" onclick="setDuration(1)">1時間</div>
+        <div class="dur-btn" data-val="1.5" onclick="setDuration(1.5)">1.5時間</div>
+        <div class="dur-btn" data-val="2" onclick="setDuration(2)">2時間</div>
+        <div class="dur-btn" data-val="2.5" onclick="setDuration(2.5)">2.5時間</div>
+        <div class="dur-btn" data-val="3" onclick="setDuration(3)">3時間以上</div>
+      </div>
+      <div class="card-label" style="margin-top:16px;font-size:12.5px">練習のきつさ（RPE）</div>
+      <div class="rpe-widget" id="rpe-widget-jishu"></div>
+    </div>
+
+    <!-- 陸上トレーニング：種別選択 -->
+    <div class="card sub-card" id="land-card">
+      <div class="card-label">どの種別を行いましたか？<span class="card-sub" style="font-size:10px">複数選択できます</span></div>
+      <div class="land-grid" id="land-grid"></div>
+      <div class="land-add-row" id="land-add-row">
+        <input type="text" class="land-add-input" id="land-add-input" placeholder="種別名を入力（例：水泳教室補助）" maxlength="12">
+        <button type="button" class="land-add-ok" onclick="confirmAddLandType()">追加</button>
+      </div>
+      <div class="land-edit-hint">Strength以外の種別は、右上の「×」で削除したり、「＋ 種別を追加」で増やせます。</div>
+      <div id="land-strength-wrap" class="sub-card" style="margin-top:10px">
+        <div id="str-summary-empty" style="text-align:center;padding:14px;border:1.5px dashed var(--line);border-radius:14px">
+          <div style="font-size:12px;color:var(--sub);margin-bottom:10px">トレーニング内容を記録しましょう</div>
+          <button type="button" class="str-add-ex-btn" style="border-style:solid;background:var(--orange-bg);border-color:var(--orange-bd);color:var(--orange)" onclick="openStrengthBuilder()">＋ 種目を選んで記録する</button>
+        </div>
+        <div id="str-summary-list" style="display:none"></div>
+      </div>
+      <div class="card-label" style="margin-top:16px;font-size:12.5px">練習のきつさ（RPE）</div>
+      <div class="rpe-widget" id="rpe-widget-land"></div>
+    </div>
+
+    <!-- 体重（測定有無のチェック付き。基本は起床時、それ以外の時間も指定できる） -->
+    <div class="card" id="wake-weight-card">
+      <div class="card-label">体重</div>
+      <label class="weight-measured-toggle">
+        <input type="checkbox" id="weight-measured-checkbox" checked onchange="toggleWeightMeasured(this.checked)">
+        <span>体重を測定した</span>
+      </label>
+      <div id="weight-detail-wrap">
+        <div class="weight-time-hint">起床時の体重（朝トイレを済ませて測りましょう）</div>
+        <div class="weight-time-row">
+          <div class="weight-time-btn active" data-val="wake" onclick="setWeightTime('wake')">起床時</div>
+          <div class="weight-time-btn" data-val="other" onclick="setWeightTime('other')">その他の時間</div>
+        </div>
+        <input type="time" id="weight-time-input" class="weight-time-input" style="display:none" onchange="onWeightTimeInputChange(this.value)">
+        <div class="stepper" style="margin-top:14px">
+          <div class="step-btn" onclick="stepWakeWeight(-0.1)">−</div>
+          <div class="step-val"><span id="wake-weight-val">−</span><span class="unit">kg</span></div>
+          <div class="step-btn" onclick="stepWakeWeight(0.1)">＋</div>
+        </div>
+        <div class="step-prev-hint" id="wake-weight-prev"></div>
+      </div>
+    </div>
+
+    <!-- 疲労度 -->
+    <div class="card">
+      <div class="card-label">今の疲労度は？</div>
+      <div class="face-grid" id="fatigue-grid">
+        <div class="face-btn" data-val="1" onclick="setFace('fatigue',1)"><span class="emoji">😄</span><span class="num">1</span></div>
+        <div class="face-btn" data-val="2" onclick="setFace('fatigue',2)"><span class="emoji">🙂</span><span class="num">2</span></div>
+        <div class="face-btn" data-val="3" onclick="setFace('fatigue',3)"><span class="emoji">😐</span><span class="num">3</span></div>
+        <div class="face-btn" data-val="4" onclick="setFace('fatigue',4)"><span class="emoji">😟</span><span class="num">4</span></div>
+        <div class="face-btn" data-val="5" onclick="setFace('fatigue',5)"><span class="emoji">😫</span><span class="num">5</span></div>
+      </div>
+    </div>
+
+    <!-- 睡眠時間（昼寝込み合計） -->
+    <div class="card">
+      <div class="card-label">合計睡眠時間<span class="card-sub">昼寝も含めた合計</span></div>
+      <div class="slider-wrap">
+        <div class="slider-val"><span id="sleep-val">7.0</span><span class="unit">時間</span></div>
+        <input type="range" id="sleep-slider" min="0" max="12" step="0.5" value="7" oninput="updateSleep(this.value)">
+        <div class="slider-labels"><span>0時間</span><span>12時間以上</span></div>
+      </div>
+    </div>
+
+    <!-- 栄養 -->
+    <div class="card">
+      <div class="card-label">栄養はしっかり摂れましたか？</div>
+      <div class="slider-wrap">
+        <div class="slider-val nutri"><span id="nutrition-val">5</span><span class="unit">/ 10</span></div>
+        <input type="range" class="nutri" id="nutrition-slider" min="1" max="10" value="5" oninput="updateNutrition(this.value)">
+        <div class="slider-labels"><span>全然摂れなかった</span><span>しっかり摂れた</span></div>
+      </div>
+    </div>
+
+    <!-- メモ -->
+    <div class="card">
+      <div class="card-label">メモ（任意）</div>
+      <textarea id="memo" placeholder="体調や気になることがあれば自由に書いてください"></textarea>
+    </div>
+
+    <button type="button" class="submit-btn" id="submit-btn" onclick="submitCondition()">
+      <span id="submit-label">記録を送信する</span>
+    </button>
+    <button type="button" class="cancel-edit-btn" id="cancel-edit-btn" onclick="cancelEdit()">編集をやめて新規入力に戻る</button>
+  </form>
+
+  <div class="hist">
+    <div class="hist-title">記録の振り返り<span class="card-sub" style="font-size:10px">タップすると編集できます</span></div>
+
+    <div class="hist-tabs">
+      <button type="button" class="hist-tab active" id="hist-tab-list" onclick="switchHistTab('list')">リスト</button>
+      <button type="button" class="hist-tab" id="hist-tab-calendar" onclick="switchHistTab('calendar')">カレンダー</button>
+      <button type="button" class="hist-tab" id="hist-tab-graph" onclick="switchHistTab('graph')">グラフ</button>
+      <button type="button" class="hist-tab" id="hist-tab-strength" onclick="switchHistTab('strength')">筋トレ</button>
+    </div>
+
+    <div class="hist-pane" id="hist-pane-list">
+      <div id="hist-list"></div>
+      <div id="hist-load-more-wrap" style="display:none;margin-top:10px">
+        <button type="button" id="hist-load-more-btn" class="land-add-btn" style="width:100%" onclick="loadMoreHist()">もっと見る</button>
+      </div>
+    </div>
+
+    <div class="hist-pane" id="hist-pane-calendar" style="display:none">
+      <div class="cal-header">
+        <div class="cal-nav-btn" onclick="calChangeMonth(-1)">‹</div>
+        <div class="cal-month-label" id="cal-month-label"></div>
+        <div class="cal-nav-btn" onclick="calChangeMonth(1)">›</div>
+      </div>
+      <div class="cal-weekdays">
+        <span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="cal-legend">
+        <span><span class="cal-dot" style="background:var(--am)"></span>午前</span>
+        <span><span class="cal-dot" style="background:var(--pm)"></span>午後</span>
+        <span><span class="cal-dot" style="background:var(--green)"></span>自主練・陸上</span>
+        <span><span class="cal-dot" style="background:var(--red)"></span>休み</span>
+      </div>
+      <div id="cal-day-detail"></div>
+    </div>
+
+    <div class="hist-pane" id="hist-pane-graph" style="display:none">
+      <div class="graph-card">
+        <div class="graph-title">体重の推移<span class="card-sub">kg</span></div>
+        <div id="graph-weight"></div>
+      </div>
+      <div class="graph-card">
+        <div class="graph-title">疲労度の推移<span class="card-sub">1〜5</span></div>
+        <div id="graph-fatigue"></div>
+      </div>
+      <div class="graph-card">
+        <div class="graph-title">睡眠時間の推移<span class="card-sub">時間</span></div>
+        <div id="graph-sleep"></div>
+      </div>
+      <div class="graph-card">
+        <div class="graph-title">RPEの推移<span class="card-sub">1〜10</span></div>
+        <div id="graph-rpe"></div>
+      </div>
+    </div>
+
+    <div class="hist-pane" id="hist-pane-strength" style="display:none">
+      <div id="strength-hist-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="success-overlay" id="success-overlay">
+  <div class="success-circle">✓</div>
+  <div class="success-text">記録を送信しました</div>
+  <div class="success-sub" id="success-sub"></div>
+</div>
+
+<!-- ══ Strengthビルダー：画面A（種目一覧・選んだ種目サマリー） ══ -->
+<div class="str-modal" id="str-modal-list">
+  <div class="str-modal-hdr">
+    <div class="str-back-btn" onclick="closeStrengthBuilder()">‹</div>
+    <h2>Strengthトレーニング</h2>
+  </div>
+  <div class="str-modal-body">
+    <div class="str-search-box">
+      <span class="str-search-ic">🔍</span>
+      <input type="text" class="str-search-input" id="str-search-input" placeholder="種目を検索..." oninput="renderExerciseList()">
+    </div>
+    <div id="str-ex-list"></div>
+
+    <div class="str-add-ex-row" id="str-add-ex-row">
+      <input type="text" class="land-add-input" id="str-add-ex-input" placeholder="新しい種目名を入力" maxlength="40">
+      <button type="button" class="land-add-ok" onclick="confirmAddExercise()">追加</button>
+    </div>
+    <button type="button" class="str-add-ex-btn" onclick="showAddExerciseRow()">＋ リストにない種目を追加する</button>
+
+    <div class="str-today-title" id="str-today-title" style="display:none">今日記録した種目</div>
+    <div id="str-today-list"></div>
+
+    <button type="button" class="str-done-btn" onclick="closeStrengthBuilder()">完了して戻る</button>
+  </div>
+</div>
+
+<!-- ══ Strengthビルダー：画面B（種目詳細・セット入力） ══ -->
+<div class="str-modal" id="str-modal-detail">
+  <div class="str-modal-hdr">
+    <div class="str-back-btn" onclick="backToExerciseList()">‹</div>
+    <h2 id="str-detail-hdr-title">種目</h2>
+  </div>
+  <div class="str-modal-body">
+    <div class="str-detail-hdr-card">
+      <div class="str-detail-name" id="str-detail-name"></div>
+      <div class="str-detail-muscles" id="str-detail-muscles"></div>
+    </div>
+
+    <div id="str-set-list"></div>
+
+    <div class="str-set-actions">
+      <button type="button" class="str-set-action-btn" onclick="addSet()">＋ セットを追加</button>
+      <button type="button" class="str-set-action-btn" onclick="removeLastSet()">－ セットを削除</button>
+    </div>
+
+    <button type="button" class="str-save-ex-btn" onclick="saveExerciseAndBack()">この種目を保存して戻る</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     Firebase SDK（CDN）
+     ════════════════════════════════════════════════════ -->
+<script>
+  // ════════════════════════════════════════════════════
+  // ここにFirebase設定手順書で取得した値を貼り付けてください
+  // （Firebaseコンソール → プロジェクトの設定 → マイアプリ → SDK の設定と構成）
+  // ════════════════════════════════════════════════════
+  const firebaseConfig = {
+    apiKey: "AIzaSyCpZy9SpzQS3y6r2iZUVUttSAgslZ8R6JI",
+    authDomain: "swimcondition.firebaseapp.com",
+    databaseURL: "https://swimcondition-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "swimcondition",
+    storageBucket: "swimcondition.firebasestorage.app",
+    messagingSenderId: "900144045766",
+    appId: "1:900144045766:web:01e852342bf427160dc1c7"
+  };
+
+  const isConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY" && !!firebaseConfig.databaseURL;
+  if (!isConfigured) {
+    document.getElementById('config-warn').style.display = 'block';
+  }
+
+  // ── Realtime Database を REST API 経由で操作（SDK不要、file://でも動作） ──
+  // databaseURL 末尾のスラッシュを正規化
+  const DB_BASE = (firebaseConfig.databaseURL || '').replace(/\/$/, '');
+
+  async function dbPush(path, data) {
+    const res = await fetch(DB_BASE + '/' + path + '.json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('送信エラー (HTTP ' + res.status + ')');
+    return res.json();
+  }
+
+  async function dbGet(path) {
+    const res = await fetch(DB_BASE + '/' + path + '.json');
+    if (!res.ok) throw new Error('取得エラー (HTTP ' + res.status + ')');
+    return res.json();
+  }
+
+  async function dbPut(path, data) {
+    const res = await fetch(DB_BASE + '/' + path + '.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('更新エラー (HTTP ' + res.status + ')');
+    return res.json();
+  }
+
+  // ── URLパラメータから選手固有IDを取得 ──
+  // 例: player.html?id=ath_7f3a2b9c&name=山田太郎&groups=SD,IM&photo=https://...
+  const params = new URLSearchParams(window.location.search);
+  const playerId = params.get('id') || '';
+  const playerName = params.get('name') || '選手';
+  const playerGroups = (params.get('groups') || '').split(',').map(s => s.trim()).filter(Boolean);
+  const playerPhoto = params.get('photo') || '';
+
+  document.getElementById('player-name').textContent = playerName + ' さん';
+
+  // 顔写真が指定されていれば、デフォルトのイラストアイコンを上書き表示する。
+  // 指定が無い、または画像の読み込みに失敗した場合はデフォルトのイラストのまま
+  if (playerPhoto) {
+    const preload = new Image();
+    preload.onload = () => { document.getElementById('hdr-icon-img').src = playerPhoto; };
+    preload.onerror = () => { /* 読み込み失敗時はデフォルトのイラストを維持 */ };
+    preload.src = playerPhoto;
+  }
+
+  const today = new Date();
+  const todayStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+  document.getElementById('today-date').textContent =
+    today.getFullYear()+'年'+(today.getMonth()+1)+'月'+today.getDate()+'日（'+['日','月','火','水','木','金','土'][today.getDay()]+'）の記録';
+
+  // ── 記録する日付（デフォルトは今日。カレンダーや日付ピッカーから過去日に変更できる） ──
+  let selectedDate = todayStr;
+
+  function formatDateLabel(dateStr) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    const wd = ['日','月','火','水','木','金','土'][dt.getDay()];
+    return m + '月' + d + '日（' + wd + '）';
+  }
+
+  function renderDateExistingList() {
+    const wrap = document.getElementById('date-existing-list');
+    if (!wrap) return;
+    const entries = Object.entries(allHistoryEntries).filter(([, e]) => e.date === selectedDate);
+    wrap.innerHTML = '';
+    if (!entries.length) {
+      wrap.innerHTML = '<div style="font-size:11px;color:var(--sub);padding:4px 2px">この日の記録はまだありません。下のフォームから入力できます。</div>';
+      return;
+    }
+    const title = document.createElement('div');
+    title.style.cssText = 'font-size:11px;color:var(--sub);font-weight:600;margin-bottom:6px';
+    title.textContent = 'この日の記録（タップで編集）';
+    wrap.appendChild(title);
+    entries.forEach(([key, entry]) => wrap.appendChild(buildHistRowEl(key, entry)));
+  }
+
+  function updateDatePickerUI() {
+    const input = document.getElementById('date-picker-input');
+    if (!input) return;
+    input.value = selectedDate;
+    input.max = todayStr;
+    const isToday = selectedDate === todayStr;
+    document.getElementById('date-weekday-label').textContent = formatDateLabel(selectedDate) + (isToday ? '・今日' : '');
+    document.getElementById('date-today-btn').style.display = isToday ? 'none' : 'block';
+    document.getElementById('date-nav-next-btn').classList.toggle('disabled', isToday);
+    renderDateExistingList();
+  }
+
+  // 日付を変更する（新規入力モードにリセットし、その日の既存記録一覧を表示する）
+  function setSelectedDate(dateStr, opts) {
+    if (dateStr > todayStr) dateStr = todayStr; // 未来日は記録できない
+    selectedDate = dateStr;
+    if (editingKey) {
+      editingKey = null;
+      document.getElementById('editing-banner').classList.remove('show');
+      document.getElementById('cancel-edit-btn').classList.remove('show');
+      document.getElementById('submit-label').textContent = '記録を送信する';
+    }
+    resetState();
+    updateDatePickerUI();
+    if (!opts || opts.scroll !== false) window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function changeSelectedDate(deltaDays) {
+    const d = new Date(selectedDate + 'T00:00:00');
+    d.setDate(d.getDate() + deltaDays);
+    const ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    setSelectedDate(ds, { scroll: false });
+  }
+
+  function onDatePickerChange(val) {
+    if (!val) return;
+    setSelectedDate(val, { scroll: false });
+  }
+
+  function jumpToToday() {
+    setSelectedDate(todayStr, { scroll: false });
+  }
+
+  // ── グループボタンを生成（選手の所属グループのみ、なければ全グループ） ──
+  // 午前・午後それぞれ独立したグループ選択UIに同じ選択肢を生成する
+  const ALL_GROUPS = ['SS','SD','St','MD','LD','IM','Jr','その他'];
+  const showGroups = playerGroups.length ? playerGroups : ALL_GROUPS;
+  const groupSubText = playerGroups.length ? '' : '（所属グループ未設定のため全表示）';
+  document.getElementById('group-card-am-sub').textContent = groupSubText;
+  document.getElementById('group-card-pm-sub').textContent = groupSubText;
+  ['am', 'pm'].forEach(sess => {
+    const grid = document.getElementById('group-grid-' + sess);
+    const setter = sess === 'am' ? setGroupAM : setGroupPM;
+    showGroups.forEach(g => {
+      const btn = document.createElement('div');
+      btn.className = 'grp-btn';
+      btn.dataset.val = g;
+      btn.textContent = g;
+      btn.onclick = () => setter(g);
+      grid.appendChild(btn);
+    });
+  });
+
+  // ── 陸上トレーニング種別の管理 ──
+  // 'Strength' は固定（削除不可）。それ以外はこの端末のlocalStorageに保存され、選手が自由に追加・削除できる。
+  // 初回はコーチが発行したURLパラメータ land=Movie,Concept2,Bike,その他 を初期値として使う。
+  const FIXED_LAND_TYPE = 'Strength';
+  const DEFAULT_LAND_TYPES = ['Strength','Movie','Concept2','Bike','その他'];
+  const LS_LAND_TYPES_KEY = 'swimcoach_player_land_types_' + (playerId || 'default');
+
+  function loadLandTypes() {
+    try {
+      const saved = localStorage.getItem(LS_LAND_TYPES_KEY);
+      if (saved) {
+        const arr = JSON.parse(saved);
+        if (Array.isArray(arr) && arr.length) return arr;
+      }
+    } catch (e) {}
+    // localStorageに保存がなければ、URLパラメータ → デフォルトの順で初期化
+    const landParam = (params.get('land') || '').split(',').map(s => s.trim()).filter(Boolean);
+    const initial = landParam.length ? landParam : DEFAULT_LAND_TYPES;
+    if (initial.indexOf(FIXED_LAND_TYPE) < 0) initial.unshift(FIXED_LAND_TYPE);
+    return initial;
+  }
+
+  function saveLandTypes(arr) {
+    try { localStorage.setItem(LS_LAND_TYPES_KEY, JSON.stringify(arr)); } catch (e) {}
+  }
+
+  let landTypes = loadLandTypes();
+
+  // ══ Strengthビルダー：種目データベース ══════════════════════
+  // デフォルト26種目（コーチ指定）＋ 主働筋3つ（表示順：赤=主働筋1、緑=2、黄=3）
+  // 選手はこのリストに自分で種目を追加できる（端末のlocalStorageに保存）
+  const DEFAULT_EXERCISES = [
+    { name: 'Barbell Deadlift', muscles: ['脊柱起立筋','大殿筋','ハムストリングス'] },
+    { name: 'Hex Bar Deadlift', muscles: ['大腿四頭筋','大殿筋','脊柱起立筋'] },
+    { name: 'Hex Bar Split Stance Deadlift', muscles: ['大殿筋','大腿四頭筋','ハムストリングス'] },
+    { name: 'Leg Press', muscles: ['大腿四頭筋','大殿筋','ハムストリングス'] },
+    { name: 'Barbell Squat', muscles: ['大腿四頭筋','大殿筋','脊柱起立筋'] },
+    { name: 'Barbell Front Squat', muscles: ['大腿四頭筋','大殿筋','体幹（腹直筋）'] },
+    { name: 'Hex Bar Squat', muscles: ['大腿四頭筋','大殿筋','ハムストリングス'] },
+    { name: 'Pendlay Row', muscles: ['広背筋','僧帽筋','三角筋後部'] },
+    { name: 'Trap Bar Jump Squat', muscles: ['大腿四頭筋','大殿筋','下腿三頭筋'] },
+    { name: 'Barbell Glute Bridge', muscles: ['大殿筋','ハムストリングス','脊柱起立筋'] },
+    { name: 'Hip Thrust', muscles: ['大殿筋','ハムストリングス','大腿四頭筋'] },
+    { name: 'Barbell Double-Arm Landmine Press', muscles: ['三角筋前部','大胸筋上部','上腕三頭筋'] },
+    { name: 'Single Arm Landmine Press', muscles: ['三角筋前部','体幹（腹斜筋）','上腕三頭筋'] },
+    { name: 'Power Clean', muscles: ['僧帽筋','大殿筋','ハムストリングス'] },
+    { name: 'Power Snatch', muscles: ['三角筋','僧帽筋','大殿筋'] },
+    { name: 'Clean + Push Press', muscles: ['三角筋','大腿四頭筋','僧帽筋'] },
+    { name: 'Bench Press', muscles: ['大胸筋','上腕三頭筋','三角筋前部'] },
+    { name: 'Decline Bench Press', muscles: ['大胸筋下部','上腕三頭筋','三角筋前部'] },
+    { name: 'Bulgarian Split Squat', muscles: ['大腿四頭筋','大殿筋','ハムストリングス'] },
+    { name: 'Bulgarian Split Squat Jumps', muscles: ['大腿四頭筋','大殿筋','下腿三頭筋'] },
+    { name: 'Depth Jump', muscles: ['下腿三頭筋','大腿四頭筋','大殿筋'] },
+    { name: 'Continuous Broad Jump', muscles: ['大殿筋','大腿四頭筋','下腿三頭筋'] },
+    { name: '3-tier Broad Jump', muscles: ['大殿筋','大腿四頭筋','下腿三頭筋'] },
+    { name: 'Lat Pull-down', muscles: ['広背筋','上腕二頭筋','僧帽筋'] },
+    { name: 'Chin Ups', muscles: ['広背筋','上腕二頭筋','僧帽筋'] },
+    { name: 'Cable Triceps Pushdown', muscles: ['上腕三頭筋','肘筋','前腕筋群'] },
+    { name: 'Plank with Cable Triceps Extensions', muscles: ['上腕三頭筋','体幹（腹直筋）','三角筋'] },
+    { name: 'Cable Straight Arm Pulldown', muscles: ['広背筋','大円筋','上腕三頭筋（長頭）'] },
+    { name: 'Renegade Row', muscles: ['広背筋','体幹（腹斜筋）','三角筋後部'] },
+    { name: 'Bent-over Dumbbell Row', muscles: ['広背筋','僧帽筋','三角筋後部'] },
+    { name: 'Muscle Ups', muscles: ['広背筋','上腕三頭筋','大胸筋'] }
+  ];
+  const LS_EXERCISES_KEY = 'swimcoach_player_exercises_' + (playerId || 'default');
+
+  function loadExercises() {
+    try {
+      const saved = localStorage.getItem(LS_EXERCISES_KEY);
+      if (saved) {
+        const arr = JSON.parse(saved);
+        if (Array.isArray(arr) && arr.length) return arr;
+      }
+    } catch (e) {}
+    return DEFAULT_EXERCISES.slice();
+  }
+  function saveExercises(arr) {
+    try { localStorage.setItem(LS_EXERCISES_KEY, JSON.stringify(arr)); } catch (e) {}
+  }
+  let exerciseDB = loadExercises();
+
+  // ── その日のStrength記録（種目ごとのセット配列） ──
+  // strengthLog: [{ name, muscles, sets: [{reps, weight, done}, ...] }, ...]
+  let strengthLog = [];
+  let currentExName = null; // 詳細画面で編集中の種目名
+
+  function openStrengthBuilder() {
+    document.getElementById('str-modal-list').classList.add('show');
+    renderExerciseList();
+    renderTodayStrengthList();
+  }
+  function closeStrengthBuilder() {
+    document.getElementById('str-modal-list').classList.remove('show');
+    document.getElementById('str-modal-detail').classList.remove('show');
+    renderStrengthSummary();
+  }
+
+  function renderExerciseList() {
+    const q = (document.getElementById('str-search-input').value || '').trim().toLowerCase();
+    const listEl = document.getElementById('str-ex-list');
+    const filtered = exerciseDB.filter(ex => !q || ex.name.toLowerCase().indexOf(q) >= 0);
+    listEl.innerHTML = '';
+    filtered.forEach(ex => {
+      const item = document.createElement('div');
+      item.className = 'str-ex-item';
+      const muscleTags = ex.muscles.map((m, i) =>
+        `<span class="str-mtag m${i+1}"><span class="dot"></span>${escapeHtml(m)}</span>`
+      ).join('');
+      item.innerHTML = `<div class="str-ex-name"></div><div class="str-ex-muscles">${muscleTags}</div>`;
+      item.querySelector('.str-ex-name').textContent = ex.name;
+      item.onclick = () => openExerciseDetail(ex.name);
+      listEl.appendChild(item);
+    });
+    if (!filtered.length) {
+      listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--sub);font-size:12px">該当する種目が見つかりません</div>';
+    }
+  }
+
+  function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function showAddExerciseRow() {
+    document.getElementById('str-add-ex-row').classList.add('show');
+    const inp = document.getElementById('str-add-ex-input');
+    inp.value = '';
+    inp.focus();
+  }
+
+  function confirmAddExercise() {
+    const inp = document.getElementById('str-add-ex-input');
+    const name = inp.value.trim();
+    if (!name) return;
+    if (exerciseDB.some(ex => ex.name === name)) {
+      showBanner('err', '「' + name + '」は既に登録されています。');
+      return;
+    }
+    // 新規追加種目は主働筋が未設定（選手は種目名だけ追加できる）
+    exerciseDB.push({ name: name, muscles: [] });
+    saveExercises(exerciseDB);
+    document.getElementById('str-add-ex-row').classList.remove('show');
+    document.getElementById('str-search-input').value = '';
+    renderExerciseList();
+    openExerciseDetail(name);
+  }
+
+  // ── 種目詳細：セット入力画面 ──
+  // ── 種目ごとの「前回の重量」を記憶（端末のlocalStorageに保存） ──
+  const LS_LAST_WEIGHTS_KEY = 'swimcoach_player_last_weights_' + (playerId || 'default');
+  function loadLastWeights() {
+    try {
+      const saved = localStorage.getItem(LS_LAST_WEIGHTS_KEY);
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) { return {}; }
+  }
+  function saveLastWeight(exName, weight) {
+    try {
+      const data = loadLastWeights();
+      data[exName] = weight;
+      localStorage.setItem(LS_LAST_WEIGHTS_KEY, JSON.stringify(data));
+    } catch (e) {}
+  }
+
+  function openExerciseDetail(name) {
+    currentExName = name;
+    let entry = strengthLog.find(e => e.name === name);
+    if (!entry) {
+      const exDef = exerciseDB.find(ex => ex.name === name);
+      const lastWeights = loadLastWeights();
+      const initWeight = lastWeights[name] != null ? lastWeights[name] : 0;
+      entry = { name: name, muscles: exDef ? exDef.muscles : [], sets: [{ reps: 10, weight: initWeight, done: false }] };
+      strengthLog.push(entry);
+    }
+    document.getElementById('str-detail-hdr-title').textContent = name;
+    document.getElementById('str-detail-name').textContent = name;
+    const muscleEl = document.getElementById('str-detail-muscles');
+    muscleEl.innerHTML = '';
+    entry.muscles.forEach((m, i) => {
+      const tag = document.createElement('div');
+      tag.className = 'str-mtag m' + (i+1);
+      tag.style.cssText = 'display:inline-flex;width:fit-content';
+      tag.innerHTML = '<span class="dot"></span>';
+      tag.appendChild(document.createTextNode(m));
+      muscleEl.appendChild(tag);
+    });
+    if (!entry.muscles.length) {
+      muscleEl.innerHTML = '<span style="font-size:11px;color:var(--sub)">主働筋は未設定の種目です</span>';
+    }
+    renderSetList();
+    document.getElementById('str-modal-detail').classList.add('show');
+  }
+
+  function backToExerciseList() {
+    // 空のセット（1セットも入力されていない）しかない種目は記録から除外
+    strengthLog = strengthLog.filter(e => e.sets.some(s => s.reps > 0 || s.weight > 0 || s.done));
+    // 各種目の最後のセットの重量を「次回の初期値」として記憶
+    strengthLog.forEach(e => {
+      const last = e.sets[e.sets.length - 1];
+      if (last && last.weight > 0) saveLastWeight(e.name, last.weight);
+    });
+    document.getElementById('str-modal-detail').classList.remove('show');
+    renderTodayStrengthList();
+  }
+
+  function saveExerciseAndBack() {
+    backToExerciseList();
+  }
+
+  function getCurrentEntry() {
+    return strengthLog.find(e => e.name === currentExName);
+  }
+
+  function stepSetReps(idx, delta) {
+    const entry = getCurrentEntry();
+    const set = entry.sets[idx];
+    set.reps = Math.max(0, Math.min(999, set.reps + delta));
+    renderSetList();
+  }
+  function stepSetWeight(idx, delta) {
+    const entry = getCurrentEntry();
+    const set = entry.sets[idx];
+    set.weight = Math.max(0, Math.min(999, Math.round((set.weight + delta) * 2) / 2));
+    renderSetList();
+  }
+
+  function renderSetList() {
+    const entry = getCurrentEntry();
+    const listEl = document.getElementById('str-set-list');
+    listEl.innerHTML = '';
+    entry.sets.forEach((set, idx) => {
+      const row = document.createElement('div');
+      row.className = 'str-set-row';
+      row.innerHTML = `
+        <div class="str-set-num">${idx+1}</div>
+        <div class="str-set-inputs">
+          <div class="str-set-field">
+            <button type="button" class="str-set-stepper-btn" data-act="reps-minus">−</button>
+            <div class="str-set-val-wrap"><div class="str-set-val">${set.reps}</div><div class="unit">回数</div></div>
+            <button type="button" class="str-set-stepper-btn" data-act="reps-plus">＋</button>
+          </div>
+          <div class="str-set-field">
+            <button type="button" class="str-set-stepper-btn" data-act="weight-minus">−</button>
+            <div class="str-set-val-wrap"><div class="str-set-val">${set.weight}</div><div class="unit">kg</div></div>
+            <button type="button" class="str-set-stepper-btn" data-act="weight-plus">＋</button>
+          </div>
+        </div>
+        <div class="str-set-toggle ${set.done ? 'done' : ''}">${set.done ? '✓' : ''}</div>
+        <div class="str-set-del">×</div>`;
+      row.querySelector('[data-act="reps-minus"]').onclick = () => stepSetReps(idx, -1);
+      row.querySelector('[data-act="reps-plus"]').onclick = () => stepSetReps(idx, 1);
+      row.querySelector('[data-act="weight-minus"]').onclick = () => stepSetWeight(idx, -2.5);
+      row.querySelector('[data-act="weight-plus"]').onclick = () => stepSetWeight(idx, 2.5);
+      const toggle = row.querySelector('.str-set-toggle');
+      toggle.onclick = () => { set.done = !set.done; renderSetList(); };
+      const del = row.querySelector('.str-set-del');
+      del.onclick = () => { entry.sets.splice(idx, 1); if (!entry.sets.length) entry.sets.push({reps:10,weight:0,done:false}); renderSetList(); };
+      listEl.appendChild(row);
+    });
+  }
+
+  function addSet() {
+    const entry = getCurrentEntry();
+    // 新しいセットは直前のセットの回数・重量を引き継ぐ（前回値の維持）
+    const last = entry.sets[entry.sets.length - 1];
+    entry.sets.push({ reps: last ? last.reps : 10, weight: last ? last.weight : 0, done: false });
+    renderSetList();
+  }
+  function removeLastSet() {
+    const entry = getCurrentEntry();
+    if (entry.sets.length > 1) entry.sets.pop();
+    renderSetList();
+  }
+
+  // ── 画面A：今日記録した種目の一覧表示 ──
+  function renderTodayStrengthList() {
+    const titleEl = document.getElementById('str-today-title');
+    const listEl = document.getElementById('str-today-list');
+    const valid = strengthLog.filter(e => e.sets.some(s => s.reps > 0 || s.weight > 0));
+    titleEl.style.display = valid.length ? 'block' : 'none';
+    listEl.innerHTML = '';
+    valid.forEach(entry => {
+      const item = document.createElement('div');
+      item.className = 'str-today-item';
+      const setsText = entry.sets.map(s => `${s.reps}×${s.weight}kg`).join(' / ');
+      item.innerHTML = `<div style="flex:1"><div class="str-today-item-name"></div><div class="str-today-item-sets"></div></div><div class="str-today-del">×</div>`;
+      item.querySelector('.str-today-item-name').textContent = entry.name;
+      item.querySelector('.str-today-item-sets').textContent = setsText;
+      item.querySelector('.str-today-item').onclick;
+      item.addEventListener('click', (e) => {
+        if (e.target.classList.contains('str-today-del')) return;
+        openExerciseDetail(entry.name);
+      });
+      item.querySelector('.str-today-del').onclick = (e) => {
+        e.stopPropagation();
+        strengthLog = strengthLog.filter(x => x.name !== entry.name);
+        renderTodayStrengthList();
+      };
+      listEl.appendChild(item);
+    });
+  }
+
+  // ── メイン画面の「Strength」カード内サマリー表示 ──
+  function renderStrengthSummary() {
+    const valid = strengthLog.filter(e => e.sets.some(s => s.reps > 0 || s.weight > 0));
+    const emptyEl = document.getElementById('str-summary-empty');
+    const listEl = document.getElementById('str-summary-list');
+    if (!valid.length) {
+      emptyEl.style.display = 'block';
+      listEl.style.display = 'none';
+      return;
+    }
+    emptyEl.style.display = 'none';
+    listEl.style.display = 'block';
+    listEl.innerHTML = valid.map(e => {
+      const setsText = e.sets.map(s => `${s.reps}×${s.weight}kg`).join(' / ');
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 2px;border-bottom:0.5px solid var(--line);font-size:12px">
+        <span style="font-weight:600">${escapeHtml(e.name)}</span><span style="color:var(--sub);font-size:11px">${escapeHtml(setsText)}</span>
+      </div>`;
+    }).join('') + `<button type="button" class="str-add-ex-btn" style="margin-top:10px" onclick="openStrengthBuilder()">編集する</button>`;
+  }
+
+
+
+  function renderLandGrid() {
+    const landGrid = document.getElementById('land-grid');
+    landGrid.innerHTML = '';
+    landTypes.forEach(t => {
+      const wrap = document.createElement('div');
+      wrap.className = 'land-btn-wrap';
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'land-btn' + (t === FIXED_LAND_TYPE ? ' fixed' : '');
+      btn.dataset.val = t;
+      btn.textContent = t;
+      btn.classList.toggle('active', state.landTypes.indexOf(t) >= 0);
+      btn.onclick = () => toggleLandType(t);
+      wrap.appendChild(btn);
+
+      // Strength以外は削除「×」を表示
+      if (t !== FIXED_LAND_TYPE) {
+        const delBtn = document.createElement('div');
+        delBtn.className = 'land-del-x';
+        delBtn.textContent = '×';
+        delBtn.title = '「' + t + '」を削除';
+        delBtn.onclick = (e) => { e.stopPropagation(); removeLandType(t); };
+        wrap.appendChild(delBtn);
+      }
+      landGrid.appendChild(wrap);
+    });
+
+    // 「＋ 種別を追加」ボタン
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'land-add-btn';
+    addBtn.textContent = '＋ 種別を追加';
+    addBtn.onclick = showAddLandRow;
+    landGrid.appendChild(addBtn);
+  }
+
+  function showAddLandRow() {
+    document.getElementById('land-add-row').classList.add('show');
+    const inp = document.getElementById('land-add-input');
+    inp.value = '';
+    inp.focus();
+  }
+
+  function confirmAddLandType() {
+    const inp = document.getElementById('land-add-input');
+    const name = inp.value.trim();
+    if (!name) return;
+    if (landTypes.indexOf(name) >= 0) {
+      showBanner('err', '「' + name + '」は既に登録されています。');
+      return;
+    }
+    landTypes.push(name);
+    saveLandTypes(landTypes);
+    document.getElementById('land-add-row').classList.remove('show');
+    renderLandGrid();
+  }
+
+  function removeLandType(name) {
+    if (name === FIXED_LAND_TYPE) return; // 固定項目は削除不可
+    if (!confirm('「' + name + '」を種別一覧から削除しますか？\n過去に記録した内容は残ります。')) return;
+    landTypes = landTypes.filter(t => t !== name);
+    saveLandTypes(landTypes);
+    if (state.landTypes.indexOf(name) >= 0) {
+      state.landTypes = state.landTypes.filter(t => t !== name);
+      if (state.landTypes.indexOf('Strength') < 0) {
+        document.getElementById('land-strength-wrap').classList.remove('show');
+      }
+    }
+    renderLandGrid();
+  }
+
+  // Enterキーでも追加できるように
+  document.addEventListener('DOMContentLoaded', () => {
+    const inp = document.getElementById('land-add-input');
+    if (inp) inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); confirmAddLandType(); } });
+  });
+
+  // ── 状態管理 ──
+  // amOn/pmOn: 午前・午後練習はそれぞれ独立してON/OFFできる（新規入力時は同時選択可）
+  // otherSession: 'JISHU'|'LAND'|'NONE'|null（これらは互いに排他、AM/PMとも同時には選べない）
+  let state = { amOn: false, pmOn: false, otherSession: null, amGroup: null, pmGroup: null, duration: null, landTypes: [], landMenu: '',
+                weightMeasured: true, weightTime: 'wake', wakeWeight: null,
+                amRpe: 5, pmRpe: 5, jishuRpe: 5, landRpe: 5,
+                fatigue: null, sleep: 7.0, nutrition: 5, memo: '' };
+
+  // ── 前回記録した体重（履歴から取得し、新規入力時の初期値として使う） ──
+  let lastKnownWeights = { wake: null };
+
+  function computeLastKnownWeights(data) {
+    const sorted = Object.values(data || {}).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    const found = sorted.find(it => it.wakeWeight != null);
+    return { wake: found ? { value: found.wakeWeight, date: found.date } : null };
+  }
+
+  function formatPrevHint(info) {
+    if (!info) return '';
+    const d = (info.date || '').slice(5).replace('-', '/');
+    return '前回' + (d ? '（' + d + '）' : '') + ' ' + info.value.toFixed(1) + 'kg';
+  }
+
+  function renderWeightHints() {
+    document.getElementById('wake-weight-prev').textContent = formatPrevHint(lastKnownWeights.wake);
+  }
+
+  // 前回の体重を初期値としてフォームに反映する（未入力の場合のみ／編集モード中は行わない）
+  function prefillWeightsFromLast() {
+    if (editingKey) return;
+    if (state.wakeWeight == null && lastKnownWeights.wake) {
+      state.wakeWeight = lastKnownWeights.wake.value;
+      document.getElementById('wake-weight-val').textContent = state.wakeWeight.toFixed(1);
+    }
+  }
+
+  // 「体重を測定した」チェックの切り替え。OFFなら入力欄を隠し、未測定として扱う
+  function toggleWeightMeasured(checked) {
+    state.weightMeasured = checked;
+    document.getElementById('weight-detail-wrap').style.display = checked ? '' : 'none';
+  }
+
+  // 測定時刻：「起床時」か「その他の時間」を切り替える
+  function setWeightTime(mode) {
+    document.querySelectorAll('.weight-time-btn').forEach(b => b.classList.toggle('active', b.dataset.val === mode));
+    const inp = document.getElementById('weight-time-input');
+    if (mode === 'wake') {
+      state.weightTime = 'wake';
+      inp.style.display = 'none';
+    } else {
+      inp.style.display = 'block';
+      if (!inp.value) inp.value = '12:00';
+      state.weightTime = inp.value;
+    }
+  }
+
+  function onWeightTimeInputChange(val) {
+    state.weightTime = val || 'wake';
+  }
+
+  // 編集モード：Firebase上の既存エントリを編集している場合、そのpush keyを保持
+  let editingKey = null;
+
+  const SESS_LABELS = { AM:'午前練習', PM:'午後練習', JISHU:'自主練習', LAND:'陸上トレーニング' };
+
+  renderLandGrid(); // 初期描画
+
+  // 練習タイプの選択。
+  // 新規入力時：午前・午後はそれぞれ独立にON/OFFでき、同時に選んで一緒に送信できる。
+  // 編集時（editingKeyあり）：1件の記録を編集しているので、これまで通り単一選択（排他）に固定する。
+  // JISHU・LAND・NONE（休み）は互いに排他で、AM/PMとも同時には選べない。
+  function selectSession(val) {
+    if (val === 'AM' || val === 'PM') {
+      if (editingKey) {
+        state.amOn = (val === 'AM');
+        state.pmOn = (val === 'PM');
+      } else {
+        if (val === 'AM') state.amOn = !state.amOn; else state.pmOn = !state.pmOn;
+      }
+      state.otherSession = null;
+    } else {
+      state.otherSession = (state.otherSession === val) ? null : val;
+      state.amOn = false;
+      state.pmOn = false;
+    }
+    updateSessButtonsUI();
+    refreshDependentUI();
+  }
+
+  function updateSessButtonsUI() {
+    document.querySelectorAll('.sess-btn').forEach(b => {
+      const v = b.dataset.val;
+      const active = (v === 'AM') ? state.amOn : (v === 'PM') ? state.pmOn : (state.otherSession === v);
+      b.classList.toggle('active', active);
+    });
+    document.getElementById('sess-none-btn').classList.toggle('active', state.otherSession === 'NONE');
+  }
+
+  function refreshDependentUI() {
+    document.getElementById('group-card-am').classList.toggle('show', state.amOn);
+    document.getElementById('group-card-pm').classList.toggle('show', state.pmOn);
+    document.getElementById('duration-card').classList.toggle('show', state.otherSession === 'JISHU');
+    document.getElementById('land-card').classList.toggle('show', state.otherSession === 'LAND');
+    if (state.otherSession !== 'LAND') document.getElementById('land-add-row').classList.remove('show');
+
+    if (!state.amOn) { state.amGroup = null; document.querySelectorAll('#group-grid-am .grp-btn').forEach(b=>b.classList.remove('active')); resetRpeWidget('am'); }
+    if (!state.pmOn) { state.pmGroup = null; document.querySelectorAll('#group-grid-pm .grp-btn').forEach(b=>b.classList.remove('active')); resetRpeWidget('pm'); }
+    if (state.otherSession !== 'JISHU') { state.duration = null; document.querySelectorAll('.dur-btn').forEach(b=>b.classList.remove('active')); resetRpeWidget('jishu'); }
+    if (state.otherSession !== 'LAND') { state.landTypes = []; document.querySelectorAll('.land-btn').forEach(b=>b.classList.remove('active')); document.getElementById('land-strength-wrap').classList.remove('show'); resetRpeWidget('land'); }
+  }
+
+  // RPEウィジェットを初期値（5）に戻す
+  function resetRpeWidget(scope) {
+    state[RPE_SCOPE_FIELD[scope]] = 5;
+    const slider = document.getElementById('rpe-slider-' + scope);
+    if (slider) slider.value = 5;
+    const valEl = document.getElementById('rpe-val-' + scope);
+    if (valEl) valEl.textContent = '5';
+    highlightRpeZone(scope, 5);
+  }
+
+  function setGroupAM(g) {
+    state.amGroup = g;
+    document.querySelectorAll('#group-grid-am .grp-btn').forEach(b => b.classList.toggle('active', b.dataset.val === g));
+  }
+  function setGroupPM(g) {
+    state.pmGroup = g;
+    document.querySelectorAll('#group-grid-pm .grp-btn').forEach(b => b.classList.toggle('active', b.dataset.val === g));
+  }
+
+  // ── 体重ステッパー（0.1kg刻み） ──
+  function stepWakeWeight(delta) {
+    const fallback = lastKnownWeights.wake ? lastKnownWeights.wake.value : 50;
+    const base = state.wakeWeight == null ? fallback : state.wakeWeight;
+    state.wakeWeight = Math.max(0, Math.min(200, Math.round((base + delta) * 10) / 10));
+    document.getElementById('wake-weight-val').textContent = state.wakeWeight.toFixed(1);
+  }
+
+  function setDuration(h) {
+    state.duration = h;
+    document.querySelectorAll('.dur-btn').forEach(b => b.classList.toggle('active', parseFloat(b.dataset.val) === h));
+  }
+
+  // 陸上トレーニングの種別は複数選択できる（タップでON/OFF切り替え）
+  function toggleLandType(t) {
+    const idx = state.landTypes.indexOf(t);
+    if (idx >= 0) {
+      state.landTypes.splice(idx, 1);
+    } else {
+      state.landTypes.push(t);
+    }
+    document.querySelectorAll('.land-btn').forEach(b => b.classList.toggle('active', state.landTypes.indexOf(b.dataset.val) >= 0));
+    const strengthOn = state.landTypes.indexOf('Strength') >= 0;
+    document.getElementById('land-strength-wrap').classList.toggle('show', strengthOn);
+    if (strengthOn) renderStrengthSummary();
+  }
+
+  function setFace(key, val) {
+    state[key] = val;
+    document.querySelectorAll('#fatigue-grid .face-btn').forEach(b => b.classList.toggle('active', b.dataset.val == val));
+  }
+
+  function updateSleep(val) {
+    state.sleep = parseFloat(val);
+    document.getElementById('sleep-val').textContent = state.sleep.toFixed(1);
+  }
+
+  // RPE（絵文字＋スライダー形式）。scope: 'am'|'pm'|'jishu'|'land' ごとに別々の値を持つ
+  const RPE_SCOPE_FIELD = { am: 'amRpe', pm: 'pmRpe', jishu: 'jishuRpe', land: 'landRpe' };
+  const RPE_EMOJIS = ['😄','🙂','😐','😟','😫'];
+
+  function renderRpeWidgets() {
+    Object.keys(RPE_SCOPE_FIELD).forEach(scope => {
+      const wrap = document.getElementById('rpe-widget-' + scope);
+      if (!wrap) return;
+      const emojiHtml = RPE_EMOJIS.map((e, i) => `<span class="rpe-emoji" data-zone="${i}">${e}</span>`).join('');
+      wrap.innerHTML =
+        `<div class="rpe-emoji-row" id="rpe-emoji-row-${scope}">${emojiHtml}</div>` +
+        `<div class="rpe-val"><span id="rpe-val-${scope}">5</span><span class="unit">/ 10</span></div>` +
+        `<input type="range" class="rpe-${scope}" id="rpe-slider-${scope}" min="1" max="10" step="1" value="5" oninput="updateRpe('${scope}', this.value)">` +
+        `<div class="slider-labels"><span>楽</span><span>非常にきつい</span></div>`;
+      highlightRpeZone(scope, 5);
+    });
+  }
+
+  // 10段階の値を、5つの絵文字のどれに対応させるか（1-2→0, 3-4→1, 5-6→2, 7-8→3, 9-10→4）
+  function highlightRpeZone(scope, val) {
+    const zone = Math.min(4, Math.floor((val - 1) / 2));
+    document.querySelectorAll('#rpe-emoji-row-' + scope + ' .rpe-emoji').forEach((el, i) => el.classList.toggle('active', i === zone));
+  }
+
+  function updateRpe(scope, val) {
+    const n = parseInt(val);
+    state[RPE_SCOPE_FIELD[scope]] = n;
+    const valEl = document.getElementById('rpe-val-' + scope);
+    if (valEl) valEl.textContent = n;
+    highlightRpeZone(scope, n);
+  }
+
+  function updateNutrition(val) {
+    state.nutrition = parseInt(val);
+    document.getElementById('nutrition-val').textContent = val;
+  }
+
+  // ── フォームへ既存データを反映（編集時に使用） ──
+  function applyEntryToForm(entry) {
+    const sess = entry.session || (entry.attend === false ? 'NONE' : null);
+    state = {
+      amOn: sess === 'AM',
+      pmOn: sess === 'PM',
+      otherSession: (sess === 'JISHU' || sess === 'LAND' || sess === 'NONE') ? sess : null,
+      amGroup: sess === 'AM' ? (entry.group || null) : null,
+      pmGroup: sess === 'PM' ? (entry.group || null) : null,
+      duration: entry.duration != null ? entry.duration : null,
+      landTypes: Array.isArray(entry.landTypes) ? entry.landTypes.slice() : (entry.landType ? [entry.landType] : []),
+      landMenu: entry.landMenu || '',
+      // weightMeasured/weightTimeが無い古いデータは、体重が入っていれば「起床時に測定した」とみなす
+      weightMeasured: entry.weightMeasured != null ? entry.weightMeasured : (entry.wakeWeight != null),
+      weightTime: entry.weightTime || 'wake',
+      wakeWeight: entry.wakeWeight != null ? entry.wakeWeight : null,
+      amRpe: sess === 'AM' ? (entry.rpe != null ? entry.rpe : 5) : 5,
+      pmRpe: sess === 'PM' ? (entry.rpe != null ? entry.rpe : 5) : 5,
+      jishuRpe: sess === 'JISHU' ? (entry.rpe != null ? entry.rpe : 5) : 5,
+      landRpe: sess === 'LAND' ? (entry.rpe != null ? entry.rpe : 5) : 5,
+      fatigue: entry.fatigue != null ? entry.fatigue : null,
+      sleep: entry.sleep != null ? entry.sleep : 7.0,
+      nutrition: entry.nutrition != null ? entry.nutrition : 5,
+      memo: entry.memo || ''
+    };
+    // strengthLogの復元：新形式（entry.strengthLog配列）があればそれを使用、
+    // 旧形式（landMenuのテキストのみ）しかない場合は読み取り専用の参考表示として1件にまとめる
+    if (Array.isArray(entry.strengthLog) && entry.strengthLog.length) {
+      strengthLog = JSON.parse(JSON.stringify(entry.strengthLog));
+    } else if (entry.landMenu) {
+      strengthLog = [{ name: '（過去の記録）', muscles: [], sets: [{ reps: 0, weight: 0, done: false, note: entry.landMenu }] }];
+    } else {
+      strengthLog = [];
+    }
+    updateSessButtonsUI();
+    document.querySelectorAll('#group-grid-am .grp-btn').forEach(b => b.classList.toggle('active', b.dataset.val === state.amGroup));
+    document.querySelectorAll('#group-grid-pm .grp-btn').forEach(b => b.classList.toggle('active', b.dataset.val === state.pmGroup));
+    document.querySelectorAll('.dur-btn').forEach(b => b.classList.toggle('active', parseFloat(b.dataset.val) === state.duration));
+    ['am','pm','jishu','land'].forEach(scope => {
+      const val = state[RPE_SCOPE_FIELD[scope]];
+      const slider = document.getElementById('rpe-slider-' + scope);
+      if (slider) slider.value = val;
+      const valEl = document.getElementById('rpe-val-' + scope);
+      if (valEl) valEl.textContent = val;
+      highlightRpeZone(scope, val);
+    });
+    // 過去の記録の種別が、現在の種別一覧から削除済みの場合は一覧に復元してから表示する
+    let landGridNeedsRefresh = false;
+    state.landTypes.forEach(t => {
+      if (landTypes.indexOf(t) < 0) {
+        landTypes.push(t);
+        landGridNeedsRefresh = true;
+      }
+    });
+    if (landGridNeedsRefresh) {
+      saveLandTypes(landTypes);
+      renderLandGrid();
+    }
+    document.querySelectorAll('.land-btn').forEach(b => b.classList.toggle('active', state.landTypes.indexOf(b.dataset.val) >= 0));
+    document.getElementById('land-strength-wrap').classList.toggle('show', state.landTypes.indexOf('Strength') >= 0);
+    renderStrengthSummary();
+    document.getElementById('weight-measured-checkbox').checked = state.weightMeasured;
+    document.getElementById('weight-detail-wrap').style.display = state.weightMeasured ? '' : 'none';
+    const tMode = state.weightTime === 'wake' ? 'wake' : 'other';
+    document.querySelectorAll('.weight-time-btn').forEach(b => b.classList.toggle('active', b.dataset.val === tMode));
+    document.getElementById('weight-time-input').style.display = tMode === 'other' ? 'block' : 'none';
+    document.getElementById('weight-time-input').value = tMode === 'other' ? state.weightTime : '';
+    document.getElementById('wake-weight-val').textContent = state.wakeWeight != null ? state.wakeWeight.toFixed(1) : '−';
+    document.querySelectorAll('#fatigue-grid .face-btn').forEach(b => b.classList.toggle('active', b.dataset.val == state.fatigue));
+    document.getElementById('sleep-slider').value = state.sleep;
+    document.getElementById('sleep-val').textContent = state.sleep.toFixed(1);
+    document.getElementById('nutrition-slider').value = state.nutrition;
+    document.getElementById('nutrition-val').textContent = state.nutrition;
+    document.getElementById('memo').value = state.memo;
+    refreshDependentUI();
+  }
+
+  function resetState() {
+    state = { amOn: false, pmOn: false, otherSession: null, amGroup: null, pmGroup: null, duration: null, landTypes: [], landMenu: '',
+              weightMeasured: true, weightTime: 'wake', wakeWeight: null,
+              amRpe: 5, pmRpe: 5, jishuRpe: 5, landRpe: 5,
+              fatigue: null, sleep: 7.0, nutrition: 5, memo: '' };
+    strengthLog = [];
+    document.querySelectorAll('.sess-btn,.grp-btn,.dur-btn,.land-btn,.face-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('sess-none-btn').classList.remove('active');
+    renderStrengthSummary();
+    document.getElementById('weight-measured-checkbox').checked = true;
+    document.getElementById('weight-detail-wrap').style.display = '';
+    document.querySelectorAll('.weight-time-btn').forEach(b => b.classList.toggle('active', b.dataset.val === 'wake'));
+    document.getElementById('weight-time-input').style.display = 'none';
+    document.getElementById('weight-time-input').value = '';
+    document.getElementById('wake-weight-val').textContent = '−';
+    document.getElementById('sleep-slider').value = 7;
+    document.getElementById('sleep-val').textContent = '7.0';
+    document.getElementById('nutrition-slider').value = 5;
+    document.getElementById('nutrition-val').textContent = '5';
+    document.getElementById('memo').value = '';
+    prefillWeightsFromLast();
+    refreshDependentUI();
+  }
+
+  // ── 過去の記録を選んで編集モードに入る ──
+  function startEdit(key, entry, dateLabel) {
+    editingKey = key;
+    selectedDate = entry.date || selectedDate;
+    applyEntryToForm(entry);
+    document.getElementById('editing-banner').classList.add('show');
+    document.getElementById('editing-banner-text').textContent = dateLabel + ' の記録を編集しています';
+    document.getElementById('cancel-edit-btn').classList.add('show');
+    document.getElementById('submit-label').textContent = 'この内容で更新する';
+    updateDatePickerUI();
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function cancelEdit() {
+    editingKey = null;
+    resetState();
+    document.getElementById('editing-banner').classList.remove('show');
+    document.getElementById('cancel-edit-btn').classList.remove('show');
+    document.getElementById('submit-label').textContent = '記録を送信する';
+    updateDatePickerUI();
+  }
+
+  // ── 送信（新規 or 編集の更新） ──
+  // 入力内容のうち、どの記録（最大3件：午前・午後・その他）にも共通する項目をまとめる
+  function buildEntryBase(entryDate) {
+    return {
+      playerId: playerId,
+      playerName: playerName,
+      date: entryDate,
+      weightMeasured: state.weightMeasured,                                    // 体重を測定したか
+      wakeWeight: state.weightMeasured ? state.wakeWeight : null,               // 体重（共通項目として全件に付与）
+      weightTime: state.weightMeasured ? state.weightTime : null,               // 'wake' または 'HH:MM'
+      fatigue: state.fatigue,
+      sleep: state.sleep,
+      nutrition: state.nutrition,
+      memo: document.getElementById('memo').value.trim() || '',
+      submittedAt: Date.now()
+    };
+  }
+
+  async function submitCondition() {
+    if (!isConfigured) { showBanner('err', 'Firebase設定が完了していないため送信できません。'); return; }
+    if (!playerId) { showBanner('err', 'URLに選手IDが含まれていません。コーチに発行されたリンクを確認してください。'); return; }
+    if (!state.amOn && !state.pmOn && !state.otherSession) { showBanner('err', '今日参加した練習を選ぶか、「今日は休んだ」を選んでください。'); return; }
+    if (state.amOn && !state.amGroup) { showBanner('err', '午前練習の参加グループを選択してください。'); return; }
+    if (state.pmOn && !state.pmGroup) { showBanner('err', '午後練習の参加グループを選択してください。'); return; }
+    if (state.otherSession === 'JISHU' && state.duration == null) { showBanner('err', '自主練習の実施時間を選択してください。'); return; }
+    if (state.otherSession === 'LAND' && state.landTypes.length === 0) { showBanner('err', '陸上トレーニングの種別を1つ以上選択してください。'); return; }
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    document.getElementById('submit-label').textContent = editingKey ? '更新中…' : '送信中…';
+
+    const entryDate = editingKey ? (currentHistoryDates[editingKey] || todayStr) : selectedDate;
+    const validStrengthLog = strengthLog.filter(e => e.sets.some(s => s.reps > 0 || s.weight > 0));
+    // landMenuは後方互換のための簡易テキストサマリーとして保持（古いバージョンとの互換表示用）
+    const landMenuSummary = validStrengthLog.map(e => e.name + ' ' + e.sets.map(s => s.reps+'×'+s.weight+'kg').join('/')).join('、');
+
+    // 午前・午後・その他（自主練習/陸上/休み）は、選ばれているものだけそれぞれ別の記録として作る。
+    // RPEもそれぞれ別の値として保存する（午前と午後を両方選んでいれば、1回の送信で2件まとめて保存される）。
+    const entries = [];
+    if (state.amOn) {
+      entries.push(Object.assign(buildEntryBase(entryDate), {
+        session: 'AM', attend: true, group: state.amGroup || null, rpe: state.amRpe,
+        duration: null, landTypes: null, landType: null, landMenu: '', strengthLog: null
+      }));
+    }
+    if (state.pmOn) {
+      entries.push(Object.assign(buildEntryBase(entryDate), {
+        session: 'PM', attend: true, group: state.pmGroup || null, rpe: state.pmRpe,
+        duration: null, landTypes: null, landType: null, landMenu: '', strengthLog: null
+      }));
+    }
+    if (state.otherSession) {
+      const s = state.otherSession;
+      const base = buildEntryBase(entryDate);
+      base.nutrition = s !== 'NONE' ? state.nutrition : null;
+      base.rpe = s === 'JISHU' ? state.jishuRpe : (s === 'LAND' ? state.landRpe : null);
+      entries.push(Object.assign(base, {
+        session: s, attend: s !== 'NONE', group: null,
+        duration: s === 'JISHU' ? state.duration : null,
+        landTypes: s === 'LAND' ? state.landTypes : null,
+        landType: s === 'LAND' ? (state.landTypes[0] || null) : null,
+        landMenu: (s === 'LAND' && state.landTypes.indexOf('Strength') >= 0) ? landMenuSummary : '',
+        strengthLog: (s === 'LAND' && state.landTypes.indexOf('Strength') >= 0) ? validStrengthLog : null
+      }));
+    }
+
+    try {
+      if (editingKey) {
+        // 編集時は必ず1件のみ（午前/午後/その他のいずれか単一選択に固定されている）
+        await dbPut('conditions/' + playerId + '/' + editingKey, entries[0]);
+      } else {
+        for (const e of entries) {
+          await dbPush('conditions/' + playerId, e);
+        }
+      }
+      const title = editingKey ? '更新しました' : (entries.length > 1 ? entries.length + '件の記録を送信しました' : '記録を送信しました');
+      showSuccess(title, entryDate, entries.length);
+      editingKey = null;
+      document.getElementById('editing-banner').classList.remove('show');
+      document.getElementById('cancel-edit-btn').classList.remove('show');
+      loadHistory();
+    } catch (e) {
+      showBanner('err', (editingKey ? '更新' : '送信') + 'に失敗しました。電波の良い場所でもう一度お試しください。（' + e.message + '）');
+      btn.disabled = false;
+      document.getElementById('submit-label').textContent = editingKey ? 'この内容で更新する' : '記録を送信する';
+    }
+  }
+
+  function showBanner(type, msg) {
+    const el = document.getElementById('status-banner');
+    el.className = 'status-banner show status-' + type;
+    el.textContent = msg;
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function showSuccess(title, dateStr, count) {
+    const ov = document.getElementById('success-overlay');
+    const sub = (count > 1)
+      ? dateStr + ' の記録（' + count + '件）を保存しました'
+      : dateStr + ' のコンディション記録を保存しました\n続けて別の記録も追加できます';
+    document.getElementById('success-sub').textContent = sub;
+    document.querySelector('.success-text').textContent = title;
+    ov.classList.add('show');
+    setTimeout(() => { ov.classList.remove('show'); resetForm(); resetState(); }, 2200);
+  }
+
+  function resetForm() {
+    document.getElementById('submit-btn').disabled = false;
+    document.getElementById('submit-label').textContent = '記録を送信する';
+  }
+
+  // ── 直近の記録一覧を取得・表示（タップで編集モードに入れる） ──
+  let currentHistoryDates = {}; // key -> date のマップ（編集時の日付特定に使用）
+  let currentHistoryEntries = {}; // key -> entry のマップ（onclick属性に直接埋め込まずここから参照する）
+  // ── 履歴1件分の行要素を作る（リスト表示・カレンダーの日別詳細で共用） ──
+  function buildHistRowEl(key, it, dateLabel) {
+    const sessLabel = it.session ? (SESS_LABELS[it.session] || (it.session === 'NONE' ? '休み' : it.session)) : null;
+    const isRest = it.session === 'NONE' || it.attend === false;
+    const dotColor = isRest ? 'var(--red)' : (it.session === 'AM' ? 'var(--am)' : it.session === 'PM' ? 'var(--pm)' : 'var(--green)');
+    const label = sessLabel || (it.attend ? (it.group || '参加') : '休み');
+    const extraParts = [];
+    if (it.group) extraParts.push(it.group);
+    if (it.session === 'JISHU' && it.duration != null) extraParts.push(it.duration + 'h');
+    if (it.session === 'LAND') {
+      const lts = Array.isArray(it.landTypes) ? it.landTypes : (it.landType ? [it.landType] : []);
+      if (lts.length) extraParts.push(lts.join('/'));
+    }
+    if (it.wakeWeight != null) {
+      const timeLabel = (!it.weightTime || it.weightTime === 'wake') ? '起床時' : it.weightTime;
+      extraParts.push('体重' + it.wakeWeight + 'kg(' + timeLabel + ')');
+    }
+    if (!isRest) extraParts.push('RPE ' + (it.rpe ?? '—'));
+    const d = dateLabel != null ? dateLabel : (it.date||'').slice(5).replace('-', '/');
+
+    const row = document.createElement('div');
+    row.className = 'hist-item';
+    row.innerHTML =
+      `<span class="hist-date"></span><span class="hist-dot" style="background:${dotColor}"></span>` +
+      `<span class="hist-label"></span><span class="hist-tag" style="margin-left:auto"></span>` +
+      `<span class="hist-edit-ic">✏️</span>`;
+    row.querySelector('.hist-date').textContent = d;
+    row.querySelector('.hist-label').textContent = label;
+    row.querySelector('.hist-tag').textContent = extraParts.join('・');
+    row.addEventListener('click', () => startEdit(key, it, d));
+    return row;
+  }
+
+  // allHistoryEntries: key -> entry（全件。カレンダー・グラフ表示用）
+  let allHistoryEntries = {};
+
+  let histVisibleCount = 14; // 「もっと見る」を押すたびに14件ずつ増やす
+
+  function renderHistList() {
+    const histEl = document.getElementById('hist-list');
+    const moreWrap = document.getElementById('hist-load-more-wrap');
+    const sorted = Object.entries(allHistoryEntries).sort((a, b) => (b[1].date || '').localeCompare(a[1].date || ''));
+    if (!sorted.length) {
+      histEl.innerHTML = '<div style="font-size:11px;color:var(--sub);padding:6px 2px">まだ記録がありません</div>';
+      moreWrap.style.display = 'none';
+      return;
+    }
+    const keyed = sorted.slice(0, histVisibleCount);
+    currentHistoryDates = {};
+    currentHistoryEntries = {};
+    histEl.innerHTML = '';
+    keyed.forEach(([key, it]) => {
+      currentHistoryDates[key] = it.date;
+      currentHistoryEntries[key] = it;
+      histEl.appendChild(buildHistRowEl(key, it));
+    });
+    if (sorted.length > histVisibleCount) {
+      moreWrap.style.display = '';
+      document.getElementById('hist-load-more-btn').textContent = 'もっと見る（残り' + (sorted.length - histVisibleCount) + '件）';
+    } else {
+      moreWrap.style.display = 'none';
+    }
+  }
+
+  function loadMoreHist() {
+    histVisibleCount += 14;
+    renderHistList();
+  }
+
+  async function loadHistory() {
+    if (!isConfigured || !playerId) return;
+    const histEl = document.getElementById('hist-list');
+    try {
+      const data = await dbGet('conditions/' + playerId);
+      if (!data) {
+        histEl.innerHTML = '<div style="font-size:11px;color:var(--sub);padding:6px 2px">まだ記録がありません</div>';
+        document.getElementById('hist-load-more-wrap').style.display = 'none';
+        lastKnownWeights = { wake: null };
+        renderWeightHints();
+        allHistoryEntries = {};
+        renderCalendar();
+        renderGraphs();
+        renderStrengthHistory();
+        updateDatePickerUI();
+        return;
+      }
+      lastKnownWeights = computeLastKnownWeights(data);
+      renderWeightHints();
+      prefillWeightsFromLast();
+      allHistoryEntries = data;
+      histVisibleCount = 14; // 新しいデータを取得するたびに表示件数をリセット
+      renderHistList();
+      renderCalendar();
+      renderGraphs();
+      renderStrengthHistory();
+      updateDatePickerUI();
+    } catch (e) {
+      histEl.innerHTML = '<div style="font-size:11px;color:var(--sub)">履歴を取得できませんでした</div>';
+    }
+  }
+
+  // ══ 履歴：表示タブ切り替え（リスト／カレンダー／グラフ） ══
+  function switchHistTab(tab) {
+    ['list', 'calendar', 'graph', 'strength'].forEach(t => {
+      document.getElementById('hist-tab-' + t).classList.toggle('active', t === tab);
+      document.getElementById('hist-pane-' + t).style.display = (t === tab) ? '' : 'none';
+    });
+    if (tab === 'calendar') renderCalendar();
+    if (tab === 'graph') renderGraphs();
+    if (tab === 'strength') renderStrengthHistory();
+  }
+
+  // ══ カレンダー表示 ══
+  const todayObj = new Date();
+  let calYear = todayObj.getFullYear();
+  let calMonth = todayObj.getMonth(); // 0-11
+
+  function calChangeMonth(delta) {
+    calMonth += delta;
+    if (calMonth < 0) { calMonth = 11; calYear--; }
+    if (calMonth > 11) { calMonth = 0; calYear++; }
+    renderCalendar();
+  }
+
+  function sessionDotColor(it) {
+    if (it.session === 'NONE' || it.attend === false) return 'var(--red)';
+    if (it.session === 'AM') return 'var(--am)';
+    if (it.session === 'PM') return 'var(--pm)';
+    return 'var(--green)'; // JISHU, LAND
+  }
+
+  function buildEntriesByDate() {
+    const map = {};
+    Object.entries(allHistoryEntries).forEach(([key, entry]) => {
+      const d = entry.date;
+      if (!d) return;
+      if (!map[d]) map[d] = [];
+      map[d].push({ key, entry });
+    });
+    return map;
+  }
+
+  function renderCalendar() {
+    const grid = document.getElementById('cal-grid');
+    const label = document.getElementById('cal-month-label');
+    if (!grid || !label) return; // まだDOM未生成（初回ロード時など）
+    label.textContent = calYear + '年' + (calMonth + 1) + '月';
+    const entriesByDate = buildEntriesByDate();
+    const firstWeekday = new Date(calYear, calMonth, 1).getDay();
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+    grid.innerHTML = '';
+    for (let i = 0; i < firstWeekday; i++) {
+      const blank = document.createElement('div');
+      blank.className = 'cal-cell cal-cell-blank';
+      grid.appendChild(blank);
+    }
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = calYear + '-' + String(calMonth + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+      const dayEntries = entriesByDate[dateStr] || [];
+      const isFuture = dateStr > todayStr;
+      const cell = document.createElement('div');
+      cell.className = 'cal-cell';
+      if (dateStr === todayStr) cell.classList.add('cal-cell-today');
+      const dotsHtml = dayEntries.slice(0, 3).map(e => `<span class="cal-dot" style="background:${sessionDotColor(e.entry)}"></span>`).join('');
+      cell.innerHTML = `<span class="cal-daynum">${day}</span><span class="cal-dots">${dotsHtml}</span>`;
+      if (dayEntries.length) cell.classList.add('cal-cell-has-entry');
+      if (isFuture) {
+        cell.style.opacity = '0.35';
+        cell.style.cursor = 'default';
+      } else if (dayEntries.length) {
+        cell.addEventListener('click', () => showCalDayDetail(dateStr, dayEntries));
+      } else {
+        // 記録のない日：タップするとその日付で新規入力を開始する
+        cell.addEventListener('click', () => setSelectedDate(dateStr));
+      }
+      grid.appendChild(cell);
+    }
+
+    // 当月に選択中の日があればその詳細を保持、無ければクリア
+    const detailEl = document.getElementById('cal-day-detail');
+    if (detailEl) detailEl.innerHTML = '<div style="font-size:11px;color:var(--sub);padding:6px 2px">日付をタップすると、その日の記録を確認したり、新しく記録を追加できます。</div>';
+  }
+
+  function showCalDayDetail(dateStr, dayEntries) {
+    const wrap = document.getElementById('cal-day-detail');
+    const d = dateStr.slice(5).replace('-', '/');
+    wrap.innerHTML = '';
+    const title = document.createElement('div');
+    title.className = 'cal-detail-title';
+    title.textContent = d + ' の記録';
+    wrap.appendChild(title);
+    dayEntries.forEach(({ key, entry }) => {
+      wrap.appendChild(buildHistRowEl(key, entry, d));
+    });
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'cal-add-entry-btn';
+    addBtn.textContent = '＋ この日の記録を追加する';
+    addBtn.onclick = () => setSelectedDate(dateStr);
+    wrap.appendChild(addBtn);
+  }
+
+  // ══ グラフ表示（体重・疲労度・睡眠時間・RPEの推移） ══
+  // 同じ日に複数記録がある場合は、最後に送信されたものを代表値として採用する
+  function buildDailySeries(fieldName) {
+    const byDate = {};
+    Object.values(allHistoryEntries).forEach(entry => {
+      const d = entry.date;
+      if (!d) return;
+      const v = entry[fieldName];
+      if (v == null) return;
+      const ts = entry.submittedAt || 0;
+      if (!byDate[d] || ts >= byDate[d].ts) byDate[d] = { value: v, ts: ts };
+    });
+    return Object.keys(byDate).sort().map(d => ({ date: d, value: byDate[d].value })).slice(-20);
+  }
+
+  // 体重：「起床時」と「その他の時間」を、それぞれ別の系列として返す
+  function buildWeightSeriesByTime() {
+    const byDateWake = {};
+    const byDateOther = {};
+    Object.values(allHistoryEntries).forEach(entry => {
+      if (entry.wakeWeight == null || !entry.date) return;
+      const isWake = !entry.weightTime || entry.weightTime === 'wake';
+      const target = isWake ? byDateWake : byDateOther;
+      const ts = entry.submittedAt || 0;
+      if (!target[entry.date] || ts >= target[entry.date].ts) target[entry.date] = { value: entry.wakeWeight, ts: ts };
+    });
+    const toSeries = byDate => Object.keys(byDate).sort().map(d => ({ date: d, value: byDate[d].value })).slice(-20);
+    return { wake: toSeries(byDateWake), other: toSeries(byDateOther) };
+  }
+
+  // RPE：午前・午後・陸上トレーニングを、それぞれ別の系列として返す（記録があるものだけ）
+  function buildRpeSeriesBySession() {
+    const result = {};
+    ['AM', 'PM', 'LAND', 'JISHU'].forEach(s => {
+      const byDate = {};
+      Object.values(allHistoryEntries).forEach(entry => {
+        if (entry.session !== s || entry.rpe == null || !entry.date) return;
+        const ts = entry.submittedAt || 0;
+        if (!byDate[entry.date] || ts >= byDate[entry.date].ts) byDate[entry.date] = { value: entry.rpe, ts: ts };
+      });
+      result[s] = Object.keys(byDate).sort().map(d => ({ date: d, value: byDate[d].value })).slice(-20);
+    });
+    return result;
+  }
+
+  function buildLegendHtml(seriesDefs) {
+    const visible = seriesDefs.filter(s => s.points.length);
+    if (visible.length <= 1) return '';
+    return '<div class="graph-legend">' + visible.map(s =>
+      `<span><span class="graph-legend-dot" style="background:${s.color}"></span>${s.label}</span>`
+    ).join('') + '</div>';
+  }
+
+  // 複数系列を同じグラフに重ねて表示する（系列ごとに日付が異なっていてもOK）
+  function buildMultiLineChartSVG(seriesDefs) {
+    const allPoints = seriesDefs.flatMap(s => s.points);
+    if (!allPoints.length) {
+      return '<div style="font-size:11px;color:var(--sub);padding:10px 2px">まだデータがありません</div>';
+    }
+    const W = 320, H = 110, padL = 8, padR = 8, padT = 14, padB = 20;
+    const vals = allPoints.map(p => p.value);
+    let min = Math.min(...vals), max = Math.max(...vals);
+    if (min === max) { min -= 1; max += 1; }
+    const pad = (max - min) * 0.15;
+    min -= pad; max += pad;
+
+    // 系列をまたいだ日付の和集合で共通のX軸を作る
+    const allDates = Array.from(new Set(allPoints.map(p => p.date))).sort();
+    const innerW = W - padL - padR, innerH = H - padT - padB;
+    const stepX = allDates.length > 1 ? innerW / (allDates.length - 1) : 0;
+    const xForDate = d => padL + stepX * allDates.indexOf(d);
+    const yForVal = v => padT + innerH - ((v - min) / (max - min)) * innerH;
+
+    const pathsAndDots = seriesDefs.map(s => {
+      if (!s.points.length) return '';
+      const xy = s.points.map(p => [xForDate(p.date), yForVal(p.value)]);
+      const pathD = xy.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+      const dots = xy.map(p => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.4" fill="${s.color}"></circle>`).join('');
+      return `<path d="${pathD}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>${dots}`;
+    }).join('');
+
+    const labelIdxs = allDates.length <= 5 ? allDates.map((_, i) => i) : [0, Math.floor((allDates.length - 1) / 2), allDates.length - 1];
+    const labels = labelIdxs.map(i => {
+      const d = (allDates[i] || '').slice(5).replace('-', '/');
+      const anchor = i === 0 ? 'start' : (i === allDates.length - 1 ? 'end' : 'middle');
+      return `<text x="${xForDate(allDates[i]).toFixed(1)}" y="${H - 5}" font-size="9" fill="var(--sub)" text-anchor="${anchor}">${d}</text>`;
+    }).join('');
+
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+      ${pathsAndDots}
+      ${labels}
+    </svg>`;
+  }
+
+  function buildLineChartSVG(points, color) {
+    if (!points.length) {
+      return '<div style="font-size:11px;color:var(--sub);padding:10px 2px">まだデータがありません</div>';
+    }
+    const W = 320, H = 110, padL = 8, padR = 8, padT = 14, padB = 20;
+    const vals = points.map(p => p.value);
+    let min = Math.min(...vals), max = Math.max(...vals);
+    if (min === max) { min -= 1; max += 1; }
+    const pad = (max - min) * 0.15;
+    min -= pad; max += pad;
+    const innerW = W - padL - padR, innerH = H - padT - padB;
+    const stepX = points.length > 1 ? innerW / (points.length - 1) : 0;
+    const xy = points.map((p, i) => [
+      padL + stepX * i,
+      padT + innerH - ((p.value - min) / (max - min)) * innerH
+    ]);
+    const pathD = xy.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+    const dots = xy.map((p, i) =>
+      `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6" fill="${color}"></circle>`
+    ).join('');
+    const labelIdxs = points.length <= 5 ? points.map((_, i) => i) : [0, Math.floor((points.length - 1) / 2), points.length - 1];
+    const labels = labelIdxs.map(i => {
+      const d = (points[i].date || '').slice(5).replace('-', '/');
+      const anchor = i === 0 ? 'start' : (i === points.length - 1 ? 'end' : 'middle');
+      return `<text x="${xy[i][0].toFixed(1)}" y="${H - 5}" font-size="9" fill="var(--sub)" text-anchor="${anchor}">${d}</text>`;
+    }).join('');
+    const last = points[points.length - 1];
+    const lastLabel = `<text x="${xy[xy.length-1][0].toFixed(1)}" y="${(xy[xy.length-1][1]-8).toFixed(1)}" font-size="10" font-weight="700" fill="${color}" text-anchor="end">${last.value}</text>`;
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+      <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>
+      ${dots}
+      ${lastLabel}
+      ${labels}
+    </svg>`;
+  }
+
+  function renderGraphs() {
+    const wEl = document.getElementById('graph-weight');
+    const fEl = document.getElementById('graph-fatigue');
+    const sEl = document.getElementById('graph-sleep');
+    const rEl = document.getElementById('graph-rpe');
+    if (!wEl || !fEl || !sEl || !rEl) return; // まだDOM未生成
+
+    const weightSeries = buildWeightSeriesByTime();
+    const weightDefs = [
+      { label: '起床時', color: 'var(--orange)', points: weightSeries.wake },
+      { label: 'その他の時間', color: 'var(--blue)', points: weightSeries.other }
+    ];
+    wEl.innerHTML = buildLegendHtml(weightDefs) + buildMultiLineChartSVG(weightDefs);
+
+    fEl.innerHTML = buildLineChartSVG(buildDailySeries('fatigue'), 'var(--blue)');
+    sEl.innerHTML = buildLineChartSVG(buildDailySeries('sleep'), 'var(--green)');
+
+    const rpeSeries = buildRpeSeriesBySession();
+    const rpeDefs = [
+      { label: '午前', color: 'var(--am)', points: rpeSeries.AM },
+      { label: '午後', color: 'var(--pm)', points: rpeSeries.PM },
+      { label: '陸上', color: 'var(--green)', points: rpeSeries.LAND },
+      { label: '自主練習', color: 'var(--blue)', points: rpeSeries.JISHU }
+    ];
+    rEl.innerHTML = buildLegendHtml(rpeDefs) + buildMultiLineChartSVG(rpeDefs);
+  }
+
+  // ══ 筋トレ履歴（Strength：種目別セット・推定1RM・負荷量の推移） ══
+  // 推定1RM = 重量 ×（1 + 回数 / 40）
+  function calcEstimated1RM(weight, reps) {
+    if (!weight || !reps) return 0;
+    return weight * (1 + reps / 40);
+  }
+
+  // 任意のエントリーから「選択された陸上トレーニング種別」を配列で取得（新旧データ両対応）
+  function getEntryLandTypes(e) {
+    return Array.isArray(e.landTypes) ? e.landTypes : (e.landType ? [e.landType] : []);
+  }
+
+  // 陸上トレーニング「Strength」を含み、種目記録があるエントリーだけを抽出（新しい日付順）
+  function getStrengthDays() {
+    return Object.entries(allHistoryEntries)
+      .filter(([, e]) => e.session === 'LAND' && getEntryLandTypes(e).indexOf('Strength') >= 0 && Array.isArray(e.strengthLog) && e.strengthLog.length)
+      .map(([key, entry]) => ({ key, entry, date: entry.date || '' }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  // 1日分のエントリーから「合計種目数・合計セット数・合計レップ数・合計負荷量」を集計
+  function calcStrengthDayTotals(entry) {
+    let totalSets = 0, totalReps = 0, totalVolume = 0;
+    let exerciseCount = 0;
+    entry.strengthLog.forEach(ex => {
+      const validSets = ex.sets.filter(s => s.reps > 0 && s.weight > 0);
+      if (!validSets.length) return;
+      exerciseCount++;
+      validSets.forEach(s => {
+        totalSets++;
+        totalReps += s.reps;
+        totalVolume += s.reps * s.weight;
+      });
+    });
+    return { exerciseCount, totalSets, totalReps, totalVolume };
+  }
+
+  function renderStrengthHistoryList() {
+    const wrap = document.getElementById('strength-hist-list');
+    if (!wrap) return;
+    const days = getStrengthDays();
+    wrap.innerHTML = '';
+    if (!days.length) {
+      wrap.innerHTML = '<div style="font-size:11px;color:var(--sub);padding:6px 2px">まだ筋トレ（Strength）の記録がありません</div>';
+      return;
+    }
+    days.forEach(({ entry, date }) => {
+      const totals = calcStrengthDayTotals(entry);
+      const d = date.slice(5).replace('-', '/');
+
+      const card = document.createElement('div');
+      card.className = 'strength-day-card';
+
+      const header = document.createElement('div');
+      header.className = 'strength-day-header';
+      header.innerHTML = `<span class="strength-day-date">${d}</span><span class="strength-day-toggle">▾</span>`;
+      card.appendChild(header);
+
+      const stats = document.createElement('div');
+      stats.className = 'strength-day-stats';
+      stats.innerHTML =
+        `<div><span class="num">${totals.exerciseCount}</span><span class="lbl">種目数</span></div>` +
+        `<div><span class="num">${totals.totalSets}</span><span class="lbl">セット数</span></div>` +
+        `<div><span class="num">${totals.totalReps}</span><span class="lbl">レップ数</span></div>` +
+        `<div><span class="num">${Math.round(totals.totalVolume)}</span><span class="lbl">負荷量(kg)</span></div>`;
+      card.appendChild(stats);
+
+      const detail = document.createElement('div');
+      detail.className = 'strength-day-detail';
+      detail.style.display = 'none';
+      entry.strengthLog.forEach(ex => {
+        const validSets = ex.sets.filter(s => s.reps > 0 && s.weight > 0);
+        if (!validSets.length) return;
+        const exBlock = document.createElement('div');
+        exBlock.className = 'strength-ex-block';
+        const exName = document.createElement('div');
+        exName.className = 'strength-ex-name';
+        exName.textContent = ex.name;
+        exBlock.appendChild(exName);
+
+        const table = document.createElement('div');
+        table.className = 'strength-set-table';
+        const headRow = document.createElement('div');
+        headRow.className = 'strength-set-row strength-set-row-head';
+        headRow.innerHTML = '<span>セット</span><span>重さ</span><span>回数</span><span>合計</span><span>推定1RM</span>';
+        table.appendChild(headRow);
+        validSets.forEach((s, i) => {
+          const rm = calcEstimated1RM(s.weight, s.reps);
+          const total = s.weight * s.reps;
+          const row = document.createElement('div');
+          row.className = 'strength-set-row';
+          row.innerHTML = `<span>${i + 1}</span><span>${s.weight}kg</span><span>${s.reps}回</span><span>${total}kg</span><span>${rm.toFixed(1)}kg</span>`;
+          table.appendChild(row);
+        });
+        exBlock.appendChild(table);
+        detail.appendChild(exBlock);
+      });
+      card.appendChild(detail);
+
+      header.addEventListener('click', () => {
+        const isOpen = detail.style.display !== 'none';
+        detail.style.display = isOpen ? 'none' : 'block';
+        header.querySelector('.strength-day-toggle').textContent = isOpen ? '▾' : '▴';
+      });
+
+      wrap.appendChild(card);
+    });
+  }
+
+  function renderStrengthHistory() {
+    renderStrengthHistoryList();
+  }
+
+  // ── アイコンフォントのフォールバック ──
+  // ti-swimming が読み込まれたフォントに存在しない場合（バージョン差異等）、絵文字に差し替える
+  function checkAndFallbackIcons() {
+    var sample = document.querySelector('[data-swim-ic] .ti-swimming');
+    if (!sample) return;
+    var content = window.getComputedStyle(sample, '::before').content;
+    // 未定義のグリフは content が 'none' または空文字 '""' になる
+    if (!content || content === 'none' || content === '""' || content === '') {
+      document.querySelectorAll('[data-swim-ic]').forEach(function(el) {
+        el.innerHTML = '🏊';
+      });
+    }
+  }
+
+  // 初期化
+  refreshDependentUI();
+  renderStrengthSummary();
+  renderRpeWidgets();
+  updateDatePickerUI();
+  loadHistory();
+  // フォント読込完了後に判定（即時だとcontentが取得できないことがあるため少し待つ）
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(function(){ setTimeout(checkAndFallbackIcons, 50); });
+  } else {
+    setTimeout(checkAndFallbackIcons, 300);
+  }
+</script>
+</body>
+</html>
