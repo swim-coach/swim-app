@@ -235,6 +235,27 @@
 
   .str-add-ex-btn{width:100%;padding:13px;border-radius:14px;border:1.5px dashed var(--line);background:transparent;
     font-size:13.5px;font-weight:600;color:var(--sub);cursor:pointer;margin-top:6px}
+
+  /* ══ 種目並べ替え・非表示管理 ══ */
+  .str-ex-item{position:relative;padding-right:80px}
+  .str-ex-actions{position:absolute;right:10px;top:50%;transform:translateY(-50%);display:flex;gap:5px;align-items:center}
+  .str-ex-act-btn{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--line);background:var(--bg);
+    display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;color:var(--sub);flex-shrink:0;line-height:1}
+  .str-ex-act-btn:active{background:var(--orange-bg)}
+  .str-ex-act-btn.hide-btn:active{background:var(--red-bg);color:var(--red)}
+  .str-ex-act-btn.up-btn,.str-ex-act-btn.dn-btn{font-size:11px}
+  .str-ex-act-btn.disabled{opacity:0.2;pointer-events:none}
+
+  /* 非表示種目パネル */
+  .str-hidden-toggle{width:100%;padding:10px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);
+    font-size:12.5px;font-weight:600;color:var(--sub);cursor:pointer;margin-top:10px;text-align:center;display:flex;align-items:center;justify-content:center;gap:5px}
+  .str-hidden-panel{display:none;background:var(--bg);border:1.5px solid var(--line);border-radius:12px;padding:10px;margin-top:6px}
+  .str-hidden-panel.show{display:block}
+  .str-hidden-panel-title{font-size:11px;color:var(--sub);font-weight:700;margin-bottom:8px;padding:0 2px}
+  .str-hidden-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--card);
+    border:1px solid var(--line);border-radius:9px;margin-bottom:6px;font-size:12.5px;font-weight:600}
+  .str-restore-btn{font-size:11px;padding:4px 10px;border-radius:7px;border:1.5px solid #9CC97A;background:var(--green-bg);
+    color:var(--green);cursor:pointer;font-weight:700}
   .str-add-ex-row{display:none;gap:6px;margin-top:8px}
   .str-add-ex-row.show{display:flex}
 
@@ -612,6 +633,14 @@
     </div>
     <button type="button" class="str-add-ex-btn" onclick="showAddExerciseRow()">＋ リストにない種目を追加する</button>
 
+    <div class="str-hidden-toggle" id="str-hidden-toggle" onclick="toggleHiddenPanel()" style="display:none">
+      <span id="str-hidden-toggle-label">👁️ 非表示の種目を見る</span>
+    </div>
+    <div class="str-hidden-panel" id="str-hidden-panel">
+      <div class="str-hidden-panel-title">非表示にした種目（「復活」で一覧に戻せます）</div>
+      <div id="str-hidden-list"></div>
+    </div>
+
     <div class="str-today-title" id="str-today-title" style="display:none">今日記録した種目</div>
     <div id="str-today-list"></div>
 
@@ -889,6 +918,23 @@
   }
   let exerciseDB = loadExercises();
 
+  // 非表示にした種目名リスト（localStorageに保存）
+  const LS_HIDDEN_EX_KEY = 'swimcoach_player_hidden_ex_' + (playerId || 'default');
+  function loadHiddenExercises() {
+    try {
+      const saved = localStorage.getItem(LS_HIDDEN_EX_KEY);
+      if (saved) {
+        const arr = JSON.parse(saved);
+        if (Array.isArray(arr)) return arr;
+      }
+    } catch (e) {}
+    return [];
+  }
+  function saveHiddenExercises(arr) {
+    try { localStorage.setItem(LS_HIDDEN_EX_KEY, JSON.stringify(arr)); } catch (e) {}
+  }
+  let hiddenExercises = loadHiddenExercises(); // 非表示にした種目名の配列
+
   // ── その日のStrength記録（種目ごとのセット配列） ──
   // strengthLog: [{ name, muscles, sets: [{reps, weight, done}, ...] }, ...]
   let strengthLog = [];
@@ -908,22 +954,132 @@
   function renderExerciseList() {
     const q = (document.getElementById('str-search-input').value || '').trim().toLowerCase();
     const listEl = document.getElementById('str-ex-list');
-    const filtered = exerciseDB.filter(ex => !q || ex.name.toLowerCase().indexOf(q) >= 0);
+    const isSearching = q.length > 0;
+
+    // 表示対象：非表示リストに含まれていないもの（検索中は非表示も含めて検索）
+    const visible = exerciseDB.filter(ex => {
+      if (isSearching) return ex.name.toLowerCase().indexOf(q) >= 0;
+      return hiddenExercises.indexOf(ex.name) < 0;
+    });
+
     listEl.innerHTML = '';
-    filtered.forEach(ex => {
+    visible.forEach((ex, visIdx) => {
+      const isHidden = hiddenExercises.indexOf(ex.name) >= 0;
       const item = document.createElement('div');
       item.className = 'str-ex-item';
+      if (isHidden) item.style.opacity = '0.45';
       const muscleTags = ex.muscles.map((m, i) =>
         `<span class="str-mtag m${i+1}"><span class="dot"></span>${escapeHtml(m)}</span>`
       ).join('');
-      item.innerHTML = `<div class="str-ex-name"></div><div class="str-ex-muscles">${muscleTags}</div>`;
+      item.innerHTML = `<div class="str-ex-name"></div><div class="str-ex-muscles">${muscleTags}</div>
+        <div class="str-ex-actions">
+          ${!isSearching ? `<div class="str-ex-act-btn up-btn ${visIdx === 0 ? 'disabled' : ''}" title="上に移動">▲</div>
+          <div class="str-ex-act-btn dn-btn ${visIdx === visible.length - 1 ? 'disabled' : ''}" title="下に移動">▼</div>` : ''}
+          <div class="str-ex-act-btn hide-btn" title="${isHidden ? '表示に戻す' : '非表示にする'}">${isHidden ? '👁️' : '🙈'}</div>
+        </div>`;
       item.querySelector('.str-ex-name').textContent = ex.name;
-      item.onclick = () => openExerciseDetail(ex.name);
+
+      // 種目名タップで詳細へ（アクションボタン以外）
+      item.addEventListener('click', (e) => {
+        if (e.target.closest('.str-ex-actions')) return;
+        if (isHidden) { restoreExercise(ex.name); return; }
+        openExerciseDetail(ex.name);
+      });
+
+      if (!isSearching) {
+        // 上に移動
+        const upBtn = item.querySelector('.up-btn');
+        if (upBtn && !upBtn.classList.contains('disabled')) {
+          upBtn.addEventListener('click', (e) => { e.stopPropagation(); moveExercise(ex.name, -1); });
+        }
+        // 下に移動
+        const dnBtn = item.querySelector('.dn-btn');
+        if (dnBtn && !dnBtn.classList.contains('disabled')) {
+          dnBtn.addEventListener('click', (e) => { e.stopPropagation(); moveExercise(ex.name, 1); });
+        }
+      }
+
+      // 非表示ボタン
+      const hideBtn = item.querySelector('.hide-btn');
+      hideBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (isHidden) { restoreExercise(ex.name); } else { hideExercise(ex.name); }
+      });
+
       listEl.appendChild(item);
     });
-    if (!filtered.length) {
+
+    if (!visible.length) {
       listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--sub);font-size:12px">該当する種目が見つかりません</div>';
     }
+
+    // 非表示ボタンと非表示リスト更新
+    updateHiddenPanel();
+  }
+
+  function hideExercise(name) {
+    if (hiddenExercises.indexOf(name) < 0) {
+      hiddenExercises.push(name);
+      saveHiddenExercises(hiddenExercises);
+    }
+    renderExerciseList();
+  }
+
+  function restoreExercise(name) {
+    hiddenExercises = hiddenExercises.filter(n => n !== name);
+    saveHiddenExercises(hiddenExercises);
+    renderExerciseList();
+  }
+
+  function moveExercise(name, delta) {
+    // 表示されているもの（非表示除く）の中での並べ替えをexerciseDB全体に反映
+    const visibleNames = exerciseDB.filter(ex => hiddenExercises.indexOf(ex.name) < 0).map(ex => ex.name);
+    const visIdx = visibleNames.indexOf(name);
+    if (visIdx < 0) return;
+    const newVisIdx = visIdx + delta;
+    if (newVisIdx < 0 || newVisIdx >= visibleNames.length) return;
+
+    // exerciseDB上のインデックスを求めてswap
+    const dbIdxA = exerciseDB.findIndex(ex => ex.name === visibleNames[visIdx]);
+    const dbIdxB = exerciseDB.findIndex(ex => ex.name === visibleNames[newVisIdx]);
+    if (dbIdxA < 0 || dbIdxB < 0) return;
+    const tmp = exerciseDB[dbIdxA];
+    exerciseDB[dbIdxA] = exerciseDB[dbIdxB];
+    exerciseDB[dbIdxB] = tmp;
+    saveExercises(exerciseDB);
+    renderExerciseList();
+  }
+
+  function updateHiddenPanel() {
+    const toggleBtn = document.getElementById('str-hidden-toggle');
+    const panel = document.getElementById('str-hidden-panel');
+    const list = document.getElementById('str-hidden-list');
+    const count = hiddenExercises.length;
+    if (count === 0) {
+      toggleBtn.style.display = 'none';
+      panel.classList.remove('show');
+      return;
+    }
+    toggleBtn.style.display = 'flex';
+    document.getElementById('str-hidden-toggle-label').textContent =
+      panel.classList.contains('show')
+        ? '▴ 非表示リストを閉じる'
+        : `👁️ 非表示の種目（${count}件）`;
+
+    list.innerHTML = '';
+    hiddenExercises.forEach(name => {
+      const item = document.createElement('div');
+      item.className = 'str-hidden-item';
+      item.innerHTML = `<span>${escapeHtml(name)}</span><button type="button" class="str-restore-btn">復活</button>`;
+      item.querySelector('.str-restore-btn').onclick = () => restoreExercise(name);
+      list.appendChild(item);
+    });
+  }
+
+  function toggleHiddenPanel() {
+    const panel = document.getElementById('str-hidden-panel');
+    panel.classList.toggle('show');
+    updateHiddenPanel();
   }
 
   function escapeHtml(s) {
@@ -947,13 +1103,34 @@
       showBanner('err', '「' + name + '」は既に登録されています。');
       return;
     }
-    // 新規追加種目は主働筋が未設定（選手は種目名だけ追加できる）
     exerciseDB.push({ name: name, muscles: [] });
     saveExercises(exerciseDB);
     document.getElementById('str-add-ex-row').classList.remove('show');
     document.getElementById('str-search-input').value = '';
     renderExerciseList();
     openExerciseDetail(name);
+    saveCustomExerciseToFirebase(name);
+  }
+
+  async function saveCustomExerciseToFirebase(name) {
+    if (!isConfigured || !playerId) return;
+    try {
+      const path = 'players/' + encodeURIComponent(playerId) + '/customExercises';
+      const res = await fetch(DB_BASE + '/' + path + '.json');
+      let existing = [];
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) existing = data;
+      }
+      if (existing.indexOf(name) < 0) {
+        existing.push(name);
+        await fetch(DB_BASE + '/' + path + '.json', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(existing)
+        });
+      }
+    } catch (e) {}
   }
 
   // ── 種目詳細：セット入力画面 ──
