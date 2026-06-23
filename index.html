@@ -6226,7 +6226,40 @@ function ppJpDateToISO(s) {
 }
 
 // シート1枚分の生データ配列から、種目ブロック構造を解析してレース配列を返す
-function ppParseSheetRows(raw) {
+// パターンB用：文字列タイム（"24.48", "1:02.50" 等）を統一フォーマットに変換
+function parseTimeStrToFormatted(t) {
+  if (!t) return null;
+  t = String(t).trim();
+  // "hh:mm:ss.ffffff" 形式（openpyxlがtime型を文字列化した場合）
+  var m0 = t.match(/^(\d+):(\d{2}):(\d{2})\.?(\d*)$/);
+  if (m0) {
+    var min0 = parseInt(m0[1]) * 60 + parseInt(m0[2]);
+    var sec0 = parseInt(m0[3]);
+    var hun0 = m0[4] ? parseInt((m0[4] + '00').slice(0, 2)) : 0;
+    return min0 > 0 ? (min0 + ':' + (sec0 < 10 ? '0' : '') + sec0 + '.' + (hun0 < 10 ? '0' : '') + hun0)
+                    : (sec0 + '.' + (hun0 < 10 ? '0' : '') + hun0);
+  }
+  // "m:ss.dd" または "m:ss" 形式
+  var m1 = t.match(/^(\d+):(\d{2})\.?(\d*)$/);
+  if (m1) {
+    var min = parseInt(m1[1]);
+    var sec = parseInt(m1[2]);
+    var hun = m1[3] ? parseInt((m1[3] + '00').slice(0, 2)) : 0;
+    return min > 0 ? (min + ':' + (sec < 10 ? '0' : '') + sec + '.' + (hun < 10 ? '0' : '') + hun)
+                   : (sec + '.' + (hun < 10 ? '0' : '') + hun);
+  }
+  // "ss.dd" 形式（50m等）
+  var m2 = t.match(/^(\d+)\.(\d+)$/);
+  if (m2) {
+    var s = parseInt(m2[1]);
+    var h = parseInt((m2[2] + '00').slice(0, 2));
+    return s + '.' + (h < 10 ? '0' : '') + h;
+  }
+  return null;
+}
+
+function ppParseSheetRows(raw, sheetName) {
+  var isShortCourse = sheetName && /[-_]S$/i.test(sheetName.trim());
   var races = [];
   var curEvent = null;
   var strokeRe1 = /^(自由形|背泳ぎ|平泳ぎ|バタフライ|個人メドレー)[\s\u3000]*(\d+)\s*m$/;
@@ -6244,20 +6277,57 @@ function ppParseSheetRows(raw) {
       if (em2) { curEvent = em2[1] + 'm' + em2[2]; i++; continue; }
     }
 
+    // パターンA: タイムがDate/number型（列0=タイム, 列5=日付, 列6=大会名, 列7=レース, 列8=順位, 列9=学年）
     var isTimeVal  = (c0 instanceof Date) || (typeof c0 === 'number');
-    var hasMeetCol = row[6] && typeof row[6] === 'string' && row[6].trim() !== '';
-    if (isTimeVal && hasMeetCol && curEvent) {
-      var timeStr  = xlsxSerialToTime(c0);
-      var dateStr  = ppJpDateToISO(row[5]);
-      var meetName = String(row[6]).trim();
-      var raceType = row[7] ? String(row[7]).trim() : '';
-      var rankRaw  = row[8];
+    // 大会名は列5(200m系)か列4(100m/50m系)にある
+    var hasMeetColA = (row[6] && typeof row[6] === 'string' && row[6].trim() !== '')
+                   || (row[5] && typeof row[5] === 'string' && row[5].trim() !== '' && row[4] && typeof row[4] === 'string' && /\d{4}年/.test(row[4]));
+    // パターンB: タイムが文字列型（列0=タイム文字列, 列3=日付, 列4=大会名, 列5=レース, 列6=順位, 列7=学年）
+    var isTimeStrB = (typeof c0 === 'string') && /^\d{1,2}[:.]\d{2}/.test(c0.trim());
+    // パターンB-1: 日付=列3, 大会名=列4（下・加甲・歌野原）
+    // パターンB-2: 日付=列4, 大会名=列5（100m/50m文字列タイム）
+    var hasMeetColB1 = row[4] && typeof row[4] === 'string' && row[4].trim() !== '' && row[3] && typeof row[3] === 'string' && /\d{4}年/.test(row[3]);
+    var hasMeetColB2 = row[5] && typeof row[5] === 'string' && row[5].trim() !== '' && row[4] && typeof row[4] === 'string' && /\d{4}年/.test(row[4]);
+    var hasMeetColB = hasMeetColB1 || hasMeetColB2;
+
+    var isPatternA = isTimeVal && hasMeetColA;
+    var isPatternB = isTimeStrB && hasMeetColB && !isTimeVal;
+    if ((isPatternA || isPatternB) && curEvent) {
+      var timeStr, dateStr, meetName, raceType, rankRaw, grade;
+      if (isPatternA) {
+        // パターンA: タイムがDate/number型
+        // 列オフセット: 200m系は列5〜、100m/50m系は列4〜（大会名の位置で判定）
+        var offA = (row[6] && typeof row[6] === 'string' && row[6].trim() !== '') ? 5 : 4;
+        timeStr  = xlsxSerialToTime(c0);
+        dateStr  = ppJpDateToISO(row[offA]);
+        meetName = row[offA+1] ? String(row[offA+1]).trim() : '';
+        raceType = row[offA+2] ? String(row[offA+2]).trim() : '';
+        rankRaw  = row[offA+3];
+        grade    = row[offA+4] ? String(row[offA+4]).trim() : '';
+      } else {
+        // パターンB: タイムが文字列
+        timeStr  = parseTimeStrToFormatted(String(c0).trim());
+        if (hasMeetColB2 && !hasMeetColB1) {
+          // B-2: 日付=列4, 大会名=列5（100m/50m文字列タイム）
+          dateStr  = ppJpDateToISO(row[4]);
+          meetName = String(row[5]).trim();
+          raceType = row[6] ? String(row[6]).trim() : '';
+          rankRaw  = row[7];
+          grade    = row[8] ? String(row[8]).trim() : '';
+        } else {
+          // B-1: 日付=列3, 大会名=列4
+          dateStr  = ppJpDateToISO(row[3]);
+          meetName = String(row[4]).trim();
+          raceType = row[5] ? String(row[5]).trim() : '';
+          rankRaw  = row[6];
+          grade    = row[7] ? String(row[7]).trim() : '';
+        }
+      }
       var rank = '';
       if (rankRaw !== null && rankRaw !== undefined && rankRaw !== '') {
         var rs = String(rankRaw).trim();
         rank = /^\d+$/.test(rs) ? (rs + '位') : rs;
       }
-      var grade = row[9] ? String(row[9]).trim() : '';
       var noteParts = [];
       if (raceType) noteParts.push(raceType);
       if (grade)    noteParts.push(grade);
@@ -6269,6 +6339,7 @@ function ppParseSheetRows(raw) {
         races.push({
           event: curEvent, time: timeStr, date: dateStr, meet: meetName,
           rank: rank, note: noteParts.join('・'),
+          pool: isShortCourse ? '短水路' : '長水路',
           laps50: lapData.pass50, splits50: lapData.split50
         });
       }
@@ -6312,7 +6383,7 @@ async function ppProcess(file) {
       var raw = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
       if (!raw.length) return;
       if (!athleteName && raw[0] && raw[0][0]) athleteName = String(raw[0][0]).trim();
-      allRaces = allRaces.concat(ppParseSheetRows(raw));
+      allRaces = allRaces.concat(ppParseSheetRows(raw, sn));
     });
 
     document.getElementById('pp-loading').style.display = 'none';
@@ -6402,9 +6473,11 @@ function ppExecute() {
   var imported = 0, overwritten = 0, pbUpdated = 0;
   ppRaces.forEach(function(r) {
     if (!r.time) return;
-    var wasPB = checkAndUpdatePB(a, r.event, pool, r.time, r.date, r.meet);
+    // シート名から判定したpool（r.pool）を優先、なければUIの選択値を使用
+    var rpool = (r.pool && (r.pool === '短水路' || r.pool === '長水路')) ? r.pool : pool;
+    var wasPB = checkAndUpdatePB(a, r.event, rpool, r.time, r.date, r.meet);
     if (wasPB) pbUpdated++;
-    var entry = { meet: r.meet, date: r.date, event: r.event, pool: pool, time: r.time, rank: r.rank, tag: wasPB ? 'PB' : '', note: r.note };
+    var entry = { meet: r.meet, date: r.date, event: r.event, pool: rpool, time: r.time, rank: r.rank, tag: wasPB ? 'PB' : '', note: r.note };
     if (includeLaps && r.laps50 && Object.keys(r.laps50).length) {
       entry.laps50   = r.laps50;
       entry.splits50 = r.splits50 || {};
