@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>今日のメニュー</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+:root {
+  --bg:       #F0FAFB;
+  --card:     #FFFFFF;
+  --main:     #0E7490;
+  --dark:     #0C4A6E;
+  --mid:      #06B6D4;
+  --light:    #CFFAFE;
+  --sub:      #64748B;
+  --line:     #E2E8F0;
+  --green:    #059669;
+  --green-bg: #D1FAE5;
+  --am:       #B45309;
+  --am-bg:    #FEF3C7;
+  --pm:       #1D4ED8;
+  --pm-bg:    #DBEAFE;
+  --red:      #DC2626;
+  --red-bg:   #FEE2E2;
+  --radius:   14px;
+  --radius-sm:8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background: var(--bg); font-family: -apple-system, 'Hiragino Sans', 'Yu Gothic', sans-serif; color: #1E293B; min-height: 100vh; }
+
+/* ── ヘッダー ── */
+.hdr { background: var(--dark); padding: 14px 16px 12px; position: sticky; top: 0; z-index: 100; }
+.hdr-top { display: flex; align-items: center; gap: 10px; }
+.hdr-icon { width: 36px; height: 36px; border-radius: 50%; background: var(--main); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.hdr-name { font-size: 16px; font-weight: 800; color: #fff; }
+.hdr-sub  { font-size: 11px; color: var(--light); margin-top: 1px; }
+.hdr-date-badge { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--light); background: rgba(255,255,255,0.12); padding: 4px 10px; border-radius: 20px; white-space: nowrap; }
+
+/* ── タブナビ ── */
+.tab-nav { display: flex; background: var(--dark); border-top: 1px solid rgba(255,255,255,0.1); }
+.tab-btn { flex: 1; padding: 10px 4px; border: none; background: none; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.5); cursor: pointer; border-bottom: 3px solid transparent; transition: all .2s; }
+.tab-btn.active { color: var(--mid); border-bottom-color: var(--mid); }
+
+/* ── コンテンツ ── */
+.wrap { max-width: 480px; margin: 0 auto; padding: 14px 14px 60px; }
+
+/* ── メニューカード ── */
+.menu-card { background: var(--card); border-radius: var(--radius); border: 1px solid var(--line); margin-bottom: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.menu-card-hdr { padding: 12px 14px 10px; }
+.menu-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.session-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; flex-shrink: 0; }
+.session-badge.am { background: var(--am-bg); color: var(--am); }
+.session-badge.pm { background: var(--pm-bg); color: var(--pm); }
+.menu-title { font-size: 15px; font-weight: 800; color: var(--dark); flex: 1; }
+.menu-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+.menu-meta-item { font-size: 11px; color: var(--sub); display: flex; align-items: center; gap: 3px; }
+.coach-note { margin: 8px 14px 12px; background: #FEF9EE; border-radius: var(--radius-sm); padding: 9px 12px; font-size: 12px; color: #92400E; line-height: 1.6; }
+.coach-note-label { font-weight: 700; margin-bottom: 2px; font-size: 11px; }
+
+/* ── 種目リスト ── */
+.items-wrap { border-top: 1px solid var(--line); }
+.item-row { padding: 9px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 8px; }
+.item-row:last-child { border-bottom: none; }
+.item-zone { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 6px; white-space: nowrap; flex-shrink: 0; }
+.zone-wu    { background: #EDE9FE; color: #5B21B6; }
+.zone-swim  { background: #DBEAFE; color: #1D4ED8; }
+.zone-kick  { background: #D1FAE5; color: #065F46; }
+.zone-pull  { background: #FEF3C7; color: #92400E; }
+.zone-drill { background: #FCE7F3; color: #9D174D; }
+.zone-loos  { background: #E0F2FE; color: #0369A1; }
+.zone-down  { background: #F1F5F9; color: #475569; }
+.zone-other { background: #F1F5F9; color: #475569; }
+.item-main { font-size: 13px; font-weight: 600; color: #1E293B; flex: 1; }
+.item-sub  { font-size: 11px; color: var(--sub); }
+.item-int  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+
+/* ── 日付ヘッダー ── */
+.date-hdr { display: flex; align-items: center; gap: 8px; margin: 16px 0 10px; }
+.date-hdr-label { font-size: 13px; font-weight: 700; color: var(--dark); }
+.date-hdr-sub   { font-size: 11px; color: var(--sub); }
+.date-hdr-today { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 20px; background: var(--main); color: #fff; }
+
+/* ── カレンダー ── */
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 12px; }
+.cal-dow  { text-align: center; font-size: 10px; font-weight: 600; color: var(--sub); padding: 4px 0; }
+.cal-dow.sun { color: #DC2626; }
+.cal-dow.sat { color: #2563EB; }
+.cal-day  { aspect-ratio: 1; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; background: var(--card); border: 1px solid var(--line); font-size: 12px; color: #1E293B; position: relative; transition: all .15s; }
+.cal-day.empty    { background: transparent; border-color: transparent; cursor: default; }
+.cal-day.today    { background: var(--main); color: #fff; font-weight: 800; border-color: var(--main); }
+.cal-day.selected { background: var(--dark); color: #fff; border-color: var(--dark); }
+.cal-day.has-menu::after { content: ''; position: absolute; bottom: 3px; width: 5px; height: 5px; border-radius: 50%; background: var(--mid); }
+.cal-day.today.has-menu::after, .cal-day.selected.has-menu::after { background: var(--light); }
+.cal-day.other-month { color: var(--sub); background: transparent; border-color: transparent; }
+.cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.cal-nav-btn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--main); }
+.cal-nav-title { font-size: 15px; font-weight: 700; color: var(--dark); }
+.cal-selected-info { background: var(--card); border-radius: var(--radius); border: 1px solid var(--line); padding: 12px 14px; margin-bottom: 12px; font-size: 13px; font-weight: 600; color: var(--dark); }
+
+/* ── 空・ローディング ── */
+.empty { text-align: center; padding: 40px 20px; color: var(--sub); font-size: 13px; line-height: 1.8; }
+.empty-icon { font-size: 36px; margin-bottom: 8px; }
+.loading { text-align: center; padding: 60px 20px; color: var(--sub); font-size: 13px; }
+.loading i { font-size: 28px; display: block; margin-bottom: 8px; animation: spin .8s linear infinite; color: var(--main); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 設定モーダル ── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200; display: none; align-items: flex-end; }
+.modal-overlay.open { display: flex; }
+.modal-sheet { background: var(--card); border-radius: 20px 20px 0 0; padding: 20px 20px 40px; width: 100%; max-width: 480px; margin: 0 auto; }
+.modal-title { font-size: 17px; font-weight: 800; color: var(--dark); margin-bottom: 16px; }
+.modal-label { font-size: 12px; font-weight: 600; color: var(--sub); margin-bottom: 4px; margin-top: 12px; }
+.modal-input { width: 100%; padding: 11px 14px; border: 1.5px solid var(--line); border-radius: var(--radius-sm); font-size: 14px; color: #1E293B; background: var(--bg); outline: none; }
+.modal-input:focus { border-color: var(--main); }
+.modal-btn { width: 100%; padding: 14px; border: none; border-radius: var(--radius); font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 16px; }
+.modal-btn-primary { background: var(--main); color: #fff; }
+.modal-btn-cancel  { background: var(--bg); color: var(--sub); margin-top: 8px; }
+.modal-error { font-size: 12px; color: var(--red); margin-top: 8px; display: none; }
+
+/* ── 設定ボタン ── */
+.settings-btn { position: fixed; bottom: 20px; right: 16px; width: 48px; height: 48px; border-radius: 50%; background: var(--dark); color: #fff; border: none; font-size: 22px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,.2); display: flex; align-items: center; justify-content: center; z-index: 150; }
+
+/* ── 週ナビ ── */
+.week-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.week-nav-btn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--main); font-size: 16px; }
+.week-nav-label { font-size: 13px; font-weight: 700; color: var(--dark); }
+.week-days { display: flex; gap: 5px; margin-bottom: 12px; }
+.week-day-btn { flex: 1; padding: 7px 2px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--card); cursor: pointer; text-align: center; font-size: 10px; color: var(--sub); transition: all .15s; }
+.week-day-btn .wd-day { font-weight: 600; display: block; margin-bottom: 1px; }
+.week-day-btn .wd-date { font-size: 14px; font-weight: 800; display: block; color: #1E293B; }
+.week-day-btn .wd-dot  { width: 5px; height: 5px; border-radius: 50%; background: var(--mid); margin: 3px auto 0; opacity: 0; }
+.week-day-btn.has-menu .wd-dot { opacity: 1; }
+.week-day-btn.active  { border-color: var(--main); background: var(--main); }
+.week-day-btn.active .wd-day  { color: rgba(255,255,255,.8); }
+.week-day-btn.active .wd-date { color: #fff; }
+.week-day-btn.active .wd-dot  { background: var(--light); }
+.week-day-btn.today-btn .wd-date { color: var(--main); }
+
+/* ── PDFスタイル（index.htmlと同一レイアウト） ── */
+.pdf-wrap { background: #fff; border: 0.5px solid #ccc; border-radius: 8px; padding: 16px; font-family: 'Arial', sans-serif; color: #111; font-size: 10px; margin-bottom: 12px; }
+.pdf-club-title { text-align: center; font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.pdf-meta { font-size: 9.5px; color: #333; margin-bottom: 10px; display: flex; gap: 12px; flex-wrap: wrap; border-bottom: 1.5px solid #333; padding-bottom: 7px; }
+.pdf-meta b { font-weight: 700; }
+.pdf-sec-hdr { font-size: 10px; font-weight: 700; color: #111; margin: 8px 0 4px; border-left: 3px solid #333; padding-left: 6px; }
+.pdf-foot { margin-top: 10px; padding-top: 6px; border-top: 1px solid #ddd; display: flex; justify-content: space-between; font-size: 9px; color: #aaa; }
+.cpt-tbl { width: 100%; border-collapse: collapse; font-size: 9.5px; table-layout: fixed; }
+.cpt-tbl th { background: #444; color: #fff; padding: 3px 4px; text-align: left; font-size: 9px; }
+.cpt-tbl td { padding: 3px 4px; border-bottom: 0.5px solid #ddd; vertical-align: middle; line-height: 1.4; overflow: hidden; }
+.cpt-tbl .grp-bg td { background: #fff; }
+.cpt-tbl .tot-row td { background: #fff; font-weight: 700; border-top: 1.5px solid #333; }
+.cpt-grp  { width: 72px; white-space: nowrap; font-size: 8px; font-weight: 700; color: #185FA5; padding: 2px 8px 2px 2px !important; }
+.cpt-zone { width: 32px; white-space: nowrap; overflow: hidden; padding: 2px 2px !important; }
+.cpt-sets { width: 20px; text-align: center; padding: 2px 1px !important; }
+.cpt-brace{ width: 10px; text-align: center; padding: 2px 0 !important; color: #999; }
+.cpt-desc { width: auto; word-break: break-word; overflow-wrap: break-word; }
+.ic-color { display: inline-block; width: 8px; height: 8px; border-radius: 50%; border: 0.5px solid rgba(0,0,0,0.15); margin-right: 1px; vertical-align: middle; }
+.pdf-view-toggle { display: flex; gap: 8px; margin-bottom: 12px; }
+.pdf-view-btn { padding: 7px 16px; border-radius: 20px; border: 1.5px solid var(--line); background: var(--card); font-size: 12px; font-weight: 600; color: var(--sub); cursor: pointer; }
+.pdf-view-btn.active { background: var(--dark); color: #fff; border-color: var(--dark); }
+.pdf-print-btn { width: 100%; padding: 13px; border-radius: var(--radius); border: none; background: var(--main); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+@media print {
+  .hdr, .tab-nav, .settings-btn, .pdf-view-toggle, .pdf-print-btn, input[type=date] { display: none !important; }
+  .wrap { padding: 0 !important; }
+  .pdf-wrap { border: none !important; border-radius: 0 !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ヘッダー -->
+<div class="hdr">
+  <div class="hdr-top">
+    <div class="hdr-icon">🏊</div>
+    <div>
+      <div class="hdr-name" id="hdr-name">メニュー確認</div>
+      <div class="hdr-sub" id="hdr-sub">読込中…</div>
+    </div>
+    <div class="hdr-date-badge" id="hdr-date"></div>
+  </div>
+  <div class="tab-nav">
+    <button class="tab-btn active" id="tab-today"   onclick="switchTab('today')"><i class="ti ti-calendar-event"></i> 今日</button>
+    <button class="tab-btn"        id="tab-week"    onclick="switchTab('week')"><i class="ti ti-calendar-week"></i> 今週</button>
+    <button class="tab-btn"        id="tab-cal"     onclick="switchTab('cal')"><i class="ti ti-calendar-month"></i> カレンダー</button>
+    <button class="tab-btn"        id="tab-history" onclick="switchTab('history')"><i class="ti ti-history"></i> 振り返り</button>
+    <button class="tab-btn"        id="tab-print"   onclick="switchTab('print')"><i class="ti ti-printer"></i> 印刷</button>
+  </div>
+</div>
+
+<div class="wrap" id="main-wrap">
+  <div class="loading"><i class="ti ti-loader-2"></i>データを読み込んでいます…</div>
+</div>
+
+<!-- 設定ボタン -->
+<button class="settings-btn" onclick="openSettings()" title="設定"><i class="ti ti-settings"></i></button>
+
+<!-- 設定モーダル -->
+<div class="modal-overlay" id="settings-modal" onclick="e=>e.target===this&&closeSettings()">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-title">⚙️ Firebase 設定</div>
+    <p style="font-size:12px;color:var(--sub);margin-bottom:8px;line-height:1.7">コーチから教えてもらった接続情報を入力してください。入力は1回だけ必要です。</p>
+    <div class="modal-label">Database URL</div>
+    <input class="modal-input" id="cfg-db-url" placeholder="https://xxx.firebaseio.com" autocomplete="off" autocapitalize="none" spellcheck="false">
+    <div class="modal-label">選手ID（振り返り機能に必要）</div>
+    <input class="modal-input" id="cfg-player-id" placeholder="ath_xxxxxxxx（コーチから発行されたURL内のid=の値）" autocomplete="off" autocapitalize="none" spellcheck="false">
+    <div class="modal-label">自分のグループ（任意）</div>
+    <input class="modal-input" id="cfg-group" placeholder="例：A・中高・男子">
+    <div class="modal-label">自分の名前（任意）</div>
+    <input class="modal-input" id="cfg-name" placeholder="例：山田 太郎">
+    <div class="modal-error" id="cfg-error"></div>
+    <button class="modal-btn modal-btn-primary" onclick="saveSettings()">保存して読み込む</button>
+    <button class="modal-btn modal-btn-cancel"  onclick="closeSettings()">キャンセル</button>
+  </div>
+</div>
+
+<script>
+// ── 設定管理 ──
+const LS_KEY = 'swimcoach_menu_cfg';
+
+function loadCfg() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch(e) { return null; }
+}
+function saveCfg(cfg) {
+  localStorage.setItem(LS_KEY, JSON.stringify(cfg));
+}
+
+function openSettings() {
+  const cfg = loadCfg() || {};
+  document.getElementById('cfg-db-url').value    = cfg.dbUrl    || '';
+  document.getElementById('cfg-player-id').value = cfg.playerId || '';
+  document.getElementById('cfg-group').value     = cfg.group    || '';
+  document.getElementById('cfg-name').value      = cfg.name     || '';
+  document.getElementById('cfg-error').style.display = 'none';
+  document.getElementById('settings-modal').classList.add('open');
+}
+function closeSettings() {
+  document.getElementById('settings-modal').classList.remove('open');
+}
+async function saveSettings() {
+  const dbUrl    = document.getElementById('cfg-db-url').value.trim().replace(/\/$/, '');
+  const playerId = document.getElementById('cfg-player-id').value.trim();
+  const group    = document.getElementById('cfg-group').value.trim();
+  const name     = document.getElementById('cfg-name').value.trim();
+  const errEl    = document.getElementById('cfg-error');
+  errEl.style.display = 'none';
+  if (!dbUrl) { errEl.textContent = 'Database URLを入力してください'; errEl.style.display = 'block'; return; }
+  saveCfg({ dbUrl, playerId, group, name });
+  historyData = null; // 設定変更時はキャッシュをクリア
+  closeSettings();
+  await init();
+}
+
+// ── URLパラメータから設定を取得 ──
+function applyUrlParams() {
+  const p = new URLSearchParams(location.search);
+  const cfg = loadCfg() || {};
+  let changed = false;
+  if (p.get('db'))    { cfg.dbUrl    = p.get('db');    changed = true; }
+  if (p.get('id'))    { cfg.playerId = p.get('id');    changed = true; }
+  if (p.get('group')) { cfg.group    = p.get('group'); changed = true; }
+  if (p.get('name'))  { cfg.name     = p.get('name');  changed = true; }
+  if (changed) saveCfg(cfg);
+}
+
+// ── Firebase からチームデータを取得 ──
+let teamData = null;
+
+async function fetchTeamData() {
+  const cfg = loadCfg();
+  if (!cfg || !cfg.dbUrl) return null;
+  try {
+    const res = await fetch(cfg.dbUrl + '/teamData.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  } catch(e) {
+    console.warn('[menu] fetch error:', e);
+    return null;
+  }
+}
+
+// ── 日付ユーティリティ ──
+const TODAY = new Date();
+const WEEK_DAYS = ['日','月','火','水','木','金','土'];
+
+function dateKey(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
+}
+function todayKey() { return dateKey(TODAY); }
+function addDays(d, n) {
+  const r = new Date(d); r.setDate(r.getDate() + n); return r;
+}
+
+// ── タブ管理 ──
+let currentTab = 'today';
+
+function switchTab(tab) {
+  currentTab = tab;
+  ['today','week','cal','history','print'].forEach(t => {
+    const el = document.getElementById('tab-' + t);
+    if (el) el.classList.toggle('active', t === tab);
+  });
+  render();
+}
+
+// ── メインレンダー ──
+function render() {
+  if      (currentTab === 'today')   renderToday();
+  else if (currentTab === 'week')    renderWeek();
+  else if (currentTab === 'cal')     renderCal();
+  else if (currentTab === 'history') renderHistory();
+  else if (currentTab === 'print')   renderPrint();
+}
+
+// ── 種目ゾーンのスタイル ──
+function zoneClass(zone) {
+  const map = { wu:'zone-wu', swim:'zone-swim', kick:'zone-kick', pull:'zone-pull', drill:'zone-drill', loos:'zone-loos', down:'zone-down' };
+  return map[zone] || 'zone-other';
+}
+function zoneLabel(zone) {
+  const map = { wu:'W-up', swim:'Swim', kick:'Kick', pull:'Pull', drill:'Drill', loos:'Loosen', down:'Down' };
+  return map[zone] || zone || '—';
+}
+function intColor(intCat) {
+  const map = { high:'#C55A11', mid:'#185FA5', low:'#27500A', easy:'#059669' };
+  return map[intCat] || '#94A3B8';
+}
+
+// ── fmtSec ──
+function fmtSec(sec) {
+  if (!sec) return '';
+  const m = Math.floor(sec / 60), s = (sec % 60).toFixed(2);
+  return m > 0 ? m + ':' + (s < 10 ? '0' : '') + s : s + '秒';
+}
+
+// ── escHtml ──
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ── グループフィルタ ──
+function isMyMenu(m) {
+  const cfg = loadCfg() || {};
+  if (!cfg.group) return true; // グループ未設定なら全て表示
+  if (!m.group) return true;   // メニューにグループ指定なし→全員
+  // カンマ・スラッシュ区切りで複数グループに対応
+  const myGroups = cfg.group.split(/[,/・、]/).map(s => s.trim()).filter(Boolean);
+  const menuGroups = m.group.split(/[,/・、]/).map(s => s.trim()).filter(Boolean);
+  return myGroups.some(mg => menuGroups.some(mg2 => mg === mg2));
+}
+
+// ── メニューカードHTML生成 ──
+function buildMenuCard(slot, m, showDate) {
+  const sess = slot.session || '';
+  const sessClass = sess === 'AM' ? 'am' : 'pm';
+  const dist = m.totalDist ? (m.totalDist >= 1000 ? (m.totalDist/1000).toFixed(1) + 'km' : m.totalDist + 'm') : '';
+
+  let itemsHtml = '';
+  if (m.items && m.items.length) {
+    itemsHtml = '<div class="items-wrap">';
+    m.items.forEach(it => {
+      const desc = (it.reps > 1 ? it.reps + 'x' : '') + it.dist + 'm' +
+                   (it.stroke ? ' ' + esc(it.stroke) : '') +
+                   (it.cyc ? ' @' + esc(it.cyc) : '') +
+                   (it.opts && it.opts.length ? ' [' + it.opts.join('/') + ']' : '');
+      // intCat（SP3/EN1/A1,A2など）とintColorをそのまま使用
+      const intLbl = it.intCat
+        ? ' <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;background:' + (it.intColor||'#94A3B8') + '33;color:' + (it.intColor||'#94A3B8') + ';border:1px solid ' + (it.intColor||'#94A3B8') + '55">' + it.intCat + '</span>' : '';
+      const memoStr = it.memo ? '<span class="item-sub">　' + esc(it.memo) + '</span>' : '';
+      itemsHtml += `<div class="item-row">
+        <div class="item-int" style="background:${intColor(it.intCat)};margin-top:5px;flex-shrink:0"></div>
+        <span class="item-zone ${zoneClass(it.zone)}">${esc(zoneLabel(it.zone))}</span>
+        <span class="item-main">${esc(desc)}${intLbl}${memoStr}</span>
+      </div>`;
+    });
+    itemsHtml += '</div>';
+  }
+
+  const noteHtml = m.coachNote ? `<div class="coach-note"><div class="coach-note-label">📝 コーチより</div>${esc(m.coachNote)}</div>` : '';
+  const dateHtml = showDate ? `<span style="font-size:11px;color:var(--sub)">${esc(showDate)}</span>` : '';
+
+  // 時間情報
+  const assmTime = m.assmTime || '';
+  const startTime = m.startTime || '';
+  const endTime   = m.endTime   || '';
+  const swimTimeStr = startTime && endTime ? startTime + ' 〜 ' + endTime : startTime ? startTime + ' 〜' : endTime ? '〜 ' + endTime : '';
+  return `<div class="menu-card">
+    <div class="menu-card-hdr">
+      <div class="menu-card-top">
+        <span class="session-badge ${sessClass}">${esc(sess)}</span>
+        <div style="flex:1;min-width:0">
+          <div class="menu-title">${esc(m.title || '（無題）')}</div>
+          ${(assmTime || swimTimeStr) ? `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:3px;font-size:11px;font-weight:700">
+            ${assmTime   ? `<span style="color:var(--am)">🕐 集合 ${esc(assmTime)}</span>` : ''}
+            ${swimTimeStr ? `<span style="color:var(--main)">🏊 ${esc(swimTimeStr)}</span>` : ''}
+          </div>` : ''}
+        </div>
+      </div>
+      <div class="menu-meta">
+        ${dist ? `<span class="menu-meta-item"><i class="ti ti-ruler-measure" style="font-size:12px"></i>${esc(dist)}</span>` : ''}
+        ${m.group ? `<span class="menu-meta-item"><i class="ti ti-users" style="font-size:12px"></i>${esc(m.group)}</span>` : ''}
+        ${dateHtml ? `<span class="menu-meta-item">${dateHtml}</span>` : ''}
+      </div>
+    </div>
+    ${noteHtml}
+    ${itemsHtml}
+  </div>`;
+}
+
+// ── 特定の日のメニューを取得 ──
+function getDayMenus(dk) {
+  if (!teamData) return [];
+  const weekPlan = teamData.weekPlan || {};
+  const menus    = teamData.menus    || {};
+  return (weekPlan[dk] || [])
+    .map(slot => ({ slot, m: menus[String(slot.menuId)] }))
+    .filter(({m}) => m && isMyMenu(m));
+}
+
+// ══ タブ1：今日 ══
+function renderToday() {
+  const wrap = document.getElementById('main-wrap');
+  if (!teamData) { wrap.innerHTML = '<div class="empty"><div class="empty-icon">🔒</div>データが読み込まれていません。<br>右下の⚙️から設定してください。</div>'; return; }
+  const dk = todayKey();
+  const items = getDayMenus(dk);
+
+  let html = '';
+  // 今日
+  const d = TODAY;
+  html += `<div class="date-hdr">
+    <span class="date-hdr-today">今日</span>
+    <span class="date-hdr-label">${d.getMonth()+1}月${d.getDate()}日（${WEEK_DAYS[d.getDay()]}）</span>
+  </div>`;
+
+  if (items.length) {
+    items.forEach(({slot, m}) => { html += buildMenuCard(slot, m, null); });
+  } else {
+    html += `<div class="empty"><div class="empty-icon">🏖️</div>今日のメニューは<br>まだ登録されていません</div>`;
+  }
+
+  // 明日のプレビュー
+  const tomorrowDk = dateKey(addDays(TODAY, 1));
+  const tomorrowItems = getDayMenus(tomorrowDk);
+  if (tomorrowItems.length) {
+    html += `<div class="date-hdr" style="margin-top:20px">
+      <span class="date-hdr-label">明日のメニュー</span>
+    </div>`;
+    tomorrowItems.forEach(({slot, m}) => { html += buildMenuCard(slot, m, null); });
+  }
+
+  wrap.innerHTML = html;
+}
+
+// ══ タブ2：今週 ══
+let weekOffset = 0;
+let selectedWeekDay = todayKey();
+
+function renderWeek() {
+  const wrap = document.getElementById('main-wrap');
+  if (!teamData) { wrap.innerHTML = '<div class="empty"><div class="empty-icon">🔒</div>データが読み込まれていません。<br>右下の⚙️から設定してください。</div>'; return; }
+
+  // 今週の月曜を計算
+  const base = new Date(TODAY);
+  base.setDate(base.getDate() - base.getDay() + 1 + weekOffset * 7);
+
+  const weekStart = new Date(base);
+  const weekEnd   = addDays(weekStart, 6);
+  const weekLabel = `${weekStart.getMonth()+1}/${weekStart.getDate()} 〜 ${weekEnd.getMonth()+1}/${weekEnd.getDate()}`;
+
+  // 選択日をリセット（週が変わったら月曜にリセット）
+  const sd = new Date(selectedWeekDay + 'T00:00:00');
+  if (sd < weekStart || sd > weekEnd) selectedWeekDay = dateKey(base);
+
+  let html = `<div class="week-nav">
+    <button class="week-nav-btn" onclick="changeWeek(-1)"><i class="ti ti-chevron-left"></i></button>
+    <span class="week-nav-label">${esc(weekLabel)}</span>
+    <button class="week-nav-btn" onclick="changeWeek(1)"><i class="ti ti-chevron-right"></i></button>
+  </div>
+  <div class="week-days">`;
+
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(weekStart, i);
+    const dk = dateKey(d);
+    const isToday    = dk === todayKey();
+    const isSelected = dk === selectedWeekDay;
+    const hasMenu    = getDayMenus(dk).length > 0;
+    const dayName    = ['月','火','水','木','金','土','日'][i];
+    const cls = [
+      'week-day-btn',
+      hasMenu    ? 'has-menu'  : '',
+      isToday    ? 'today-btn' : '',
+      isSelected ? 'active'    : '',
+    ].filter(Boolean).join(' ');
+    html += `<button class="${cls}" onclick="selectWeekDay('${dk}')">
+      <span class="wd-day">${dayName}</span>
+      <span class="wd-date">${d.getDate()}</span>
+      <div class="wd-dot"></div>
+    </button>`;
+  }
+  html += '</div>';
+
+  // 選択日のメニュー表示
+  const selD = new Date(selectedWeekDay + 'T00:00:00');
+  const selItems = getDayMenus(selectedWeekDay);
+  html += `<div class="cal-selected-info">${selD.getMonth()+1}月${selD.getDate()}日（${WEEK_DAYS[selD.getDay()]}）のメニュー</div>`;
+  if (selItems.length) {
+    selItems.forEach(({slot, m}) => { html += buildMenuCard(slot, m, null); });
+  } else {
+    html += `<div class="empty"><div class="empty-icon">🏖️</div>この日のメニューは<br>まだ登録されていません</div>`;
+  }
+
+  wrap.innerHTML = html;
+}
+
+function changeWeek(dir) {
+  weekOffset += dir;
+  renderWeek();
+}
+function selectWeekDay(dk) {
+  selectedWeekDay = dk;
+  renderWeek();
+}
+
+// ══ タブ3：カレンダー ══
+let calYear  = TODAY.getFullYear();
+let calMonth = TODAY.getMonth();
+let calSelectedDay = todayKey();
+
+function renderCal() {
+  const wrap = document.getElementById('main-wrap');
+  if (!teamData) { wrap.innerHTML = '<div class="empty"><div class="empty-icon">🔒</div>データが読み込まれていません。<br>右下の⚙️から設定してください。</div>'; return; }
+
+  const monthLabel = `${calYear}年${calMonth+1}月`;
+  let html = `<div class="cal-nav">
+    <button class="cal-nav-btn" onclick="changeMonth(-1)"><i class="ti ti-chevron-left"></i></button>
+    <span class="cal-nav-title">${esc(monthLabel)}</span>
+    <button class="cal-nav-btn" onclick="changeMonth(1)"><i class="ti ti-chevron-right"></i></button>
+  </div>
+  <div class="cal-grid">`;
+
+  const dows = ['月','火','水','木','金','土','日'];
+  dows.forEach((d, i) => {
+    const cls = i === 5 ? 'cal-dow sat' : i === 6 ? 'cal-dow sun' : 'cal-dow';
+    html += `<div class="${cls}">${d}</div>`;
+  });
+
+  const firstDay = new Date(calYear, calMonth, 1);
+  let startDow = firstDay.getDay(); // 0=日
+  startDow = (startDow + 6) % 7;   // 月曜始まりに変換
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+  for (let i = 0; i < startDow; i++) {
+    html += '<div class="cal-day empty"></div>';
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(calYear, calMonth, d);
+    const dk   = dateKey(date);
+    const isToday    = dk === todayKey();
+    const isSelected = dk === calSelectedDay;
+    const hasMenu    = getDayMenus(dk).length > 0;
+    const cls = [
+      'cal-day',
+      isToday    ? 'today'    : '',
+      isSelected ? 'selected' : '',
+      hasMenu    ? 'has-menu' : '',
+    ].filter(Boolean).join(' ');
+    html += `<div class="${cls}" onclick="selectCalDay('${dk}')">${d}</div>`;
+  }
+  html += '</div>';
+
+  // 選択日のメニュー
+  const selD = new Date(calSelectedDay + 'T00:00:00');
+  const selItems = getDayMenus(calSelectedDay);
+  html += `<div class="cal-selected-info">${selD.getMonth()+1}月${selD.getDate()}日（${WEEK_DAYS[selD.getDay()]}）のメニュー</div>`;
+  if (selItems.length) {
+    selItems.forEach(({slot, m}) => { html += buildMenuCard(slot, m, null); });
+  } else {
+    html += `<div class="empty" style="padding:20px"><div class="empty-icon">🏖️</div>この日のメニューは<br>まだ登録されていません</div>`;
+  }
+
+  wrap.innerHTML = html;
+}
+
+function changeMonth(dir) {
+  calMonth += dir;
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  if (calMonth > 11) { calMonth = 0;  calYear++; }
+  renderCal();
+}
+function selectCalDay(dk) {
+  calSelectedDay = dk;
+  renderCal();
+}
+
+// ── ヘッダー更新 ──
+function updateHeader() {
+  const cfg = loadCfg() || {};
+  const d = TODAY;
+  document.getElementById('hdr-name').textContent = cfg.name ? cfg.name + ' さんのメニュー' : 'メニュー確認';
+  document.getElementById('hdr-sub').textContent  = cfg.group ? 'グループ: ' + cfg.group : 'SwimCoach';
+  document.getElementById('hdr-date').textContent = `${d.getMonth()+1}/${d.getDate()}（${WEEK_DAYS[d.getDay()]}）`;
+}
+
+// ── 初期化 ──
+async function init() {
+  updateHeader();
+  document.getElementById('main-wrap').innerHTML = '<div class="loading"><i class="ti ti-loader-2"></i>データを読み込んでいます…</div>';
+
+  const cfg = loadCfg();
+  if (!cfg || !cfg.dbUrl) {
+    document.getElementById('main-wrap').innerHTML = `<div class="empty">
+      <div class="empty-icon">⚙️</div>
+      初回設定が必要です。<br><br>
+      右下の <b>⚙️ボタン</b> をタップして、<br>
+      コーチから教えてもらった<br>
+      <b>Database URL</b> を入力してください。
+    </div>`;
+    openSettings();
+    return;
+  }
+
+  teamData = await fetchTeamData();
+  if (!teamData) {
+    document.getElementById('main-wrap').innerHTML = `<div class="empty">
+      <div class="empty-icon">⚠️</div>
+      データの取得に失敗しました。<br><br>
+      ・インターネット接続を確認してください<br>
+      ・Database URLが正しいか確認してください<br><br>
+      右下の ⚙️ から再設定できます。
+    </div>`;
+    return;
+  }
+
+  render();
+}
+
+
+// ══ タブ4：振り返り（実施したメニューのみ） ══
+// player.htmlのFirebaseデータから「参加した日・セッション・グループ」を取得し
+// その条件でメニューを絞り込んで表示する
+
+let historyData   = null; // conditions/{playerId} のキャッシュ
+let histOffset    = 0;    // 何週前か（0=今週）
+
+async function fetchMyHistory() {
+  const cfg = loadCfg();
+  if (!cfg || !cfg.dbUrl || !cfg.playerId) return null;
+  try {
+    const res = await fetch(cfg.dbUrl + '/conditions/' + cfg.playerId + '.json');
+    if (!res.ok) return null;
+    return await res.json();
+  } catch(e) { return null; }
+}
+
+// Firebaseのconditionsレコードから「参加情報」を日付別に整理
+// 戻り値: { '2025-06-25': [{session:'AM', group:'A'}, {session:'PM', group:'B'}], ... }
+function buildAttendMap(rawData) {
+  const map = {};
+  if (!rawData) return map;
+  Object.values(rawData).forEach(rec => {
+    if (!rec.date || !rec.attend) return;
+    const dk = rec.date;
+    if (!map[dk]) map[dk] = [];
+    // AM/PM の場合はsession+group、JISHU/LANDはsessionのみ
+    map[dk].push({ session: rec.session || '', group: rec.group || null });
+  });
+  return map;
+}
+
+// 特定の日に実施したメニューを絞り込む
+// attendEntries: [{session:'AM', group:'A'}, ...] その日の参加記録
+// weekPlanSlots: [{menuId, session}, ...] その日の週間計画
+// menus: メニューDB
+function filterExecutedMenus(attendEntries, weekPlanSlots, menus) {
+  if (!attendEntries || !attendEntries.length) return [];
+  const result = [];
+  (weekPlanSlots || []).forEach(slot => {
+    const m = menus[String(slot.menuId)];
+    if (!m) return;
+    const sess = slot.session; // 'AM' or 'PM'
+    // 条件①：同じセッション（AM/PM）に参加しているか
+    const sessMatch = attendEntries.some(a => a.session === sess);
+    if (!sessMatch) return;
+    // 条件②：グループが一致するか（メニューにグループ指定がある場合）
+    if (m.group) {
+      const menuGroups = m.group.split(/[,/・、]/).map(s => s.trim()).filter(Boolean);
+      const attended = attendEntries.filter(a => a.session === sess);
+      const groupMatch = attended.some(a => {
+        if (!a.group) return true; // グループ未入力なら一致とみなす
+        return menuGroups.some(mg => mg === a.group);
+      });
+      if (!groupMatch) return;
+    }
+    result.push({ slot, m });
+  });
+  return result;
+}
+
+async function renderHistory() {
+  const wrap = document.getElementById('main-wrap');
+  const cfg  = loadCfg() || {};
+
+  if (!teamData) {
+    wrap.innerHTML = '<div class="empty"><div class="empty-icon">🔒</div>データが読み込まれていません。<br>右下の⚙️から設定してください。</div>';
+    return;
+  }
+
+  if (!cfg.playerId) {
+    wrap.innerHTML = `<div class="empty">
+      <div class="empty-icon">🔑</div>
+      選手IDが設定されていません。<br><br>
+      右下の ⚙️ から<b>選手ID</b>を入力してください。<br>
+      <span style="font-size:11px;color:var(--sub)">(コーチから発行されたURLに含まれる <code>id=xxx</code> の値)</span>
+    </div>`;
+    return;
+  }
+
+  // ローディング表示
+  wrap.innerHTML = '<div class="loading"><i class="ti ti-loader-2"></i>参加記録を読み込んでいます…</div>';
+
+  if (!historyData) {
+    historyData = await fetchMyHistory();
+  }
+  const attendMap = buildAttendMap(historyData);
+  const weekPlan  = teamData.weekPlan || {};
+  const menus     = teamData.menus    || {};
+
+  // 今週の月曜を基点に前後を計算
+  const base = new Date(TODAY);
+  base.setDate(base.getDate() - base.getDay() + 1 + histOffset * 7);
+  const weekStart = new Date(base);
+  const weekEnd   = addDays(weekStart, 6);
+  const weekLabel = `${weekStart.getMonth()+1}/${weekStart.getDate()} 〜 ${weekEnd.getMonth()+1}/${weekEnd.getDate()}`;
+
+  let html = `<div class="week-nav">
+    <button class="week-nav-btn" onclick="changeHistWeek(-1)"><i class="ti ti-chevron-left"></i></button>
+    <span class="week-nav-label">${esc(weekLabel)}</span>
+    <button class="week-nav-btn" onclick="changeHistWeek(1)"><i class="ti ti-chevron-right"></i></button>
+  </div>`;
+
+  // 週サマリーバッジ
+  let weekTotalDist = 0, weekTotalSess = 0;
+
+  // 日ごとにループ
+  let anyMenu = false;
+  for (let i = 0; i < 7; i++) {
+    const d   = addDays(weekStart, i);
+    const dk  = dateKey(d);
+    const isToday = dk === todayKey();
+    const attendEntries = attendMap[dk] || [];
+    const daySlots      = weekPlan[dk]  || [];
+    const executed      = filterExecutedMenus(attendEntries, daySlots, menus);
+
+    if (!executed.length && !attendEntries.length) continue;
+    anyMenu = true;
+
+    const dayLabel  = `${d.getMonth()+1}月${d.getDate()}日（${WEEK_DAYS[d.getDay()]}）`;
+    const todayBadge = isToday ? '<span class="date-hdr-today">今日</span>' : '';
+
+    html += `<div class="date-hdr">${todayBadge}<span class="date-hdr-label">${dayLabel}</span></div>`;
+
+    // 参加バッジ
+    if (attendEntries.length) {
+      html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">';
+      attendEntries.forEach(a => {
+        const sessLabel = { AM:'午前', PM:'午後', JISHU:'自主練', LAND:'陸上', NONE:'休み' }[a.session] || a.session;
+        const sessColor = a.session === 'AM' ? 'var(--am)' : a.session === 'PM' ? 'var(--pm)' : 'var(--sub)';
+        const sessBg    = a.session === 'AM' ? 'var(--am-bg)' : a.session === 'PM' ? 'var(--pm-bg)' : 'var(--line)';
+        const groupStr  = a.group ? ' / ' + a.group : '';
+        html += `<span style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;background:${sessBg};color:${sessColor}">✓ ${esc(sessLabel)}${esc(groupStr)}</span>`;
+      });
+      html += '</div>';
+    }
+
+    if (executed.length) {
+      executed.forEach(({slot, m}) => {
+        weekTotalDist += m.totalDist || 0;
+        weekTotalSess++;
+        html += buildMenuCard(slot, m, null);
+      });
+    } else if (attendEntries.some(a => a.session === 'JISHU' || a.session === 'LAND' || a.session === 'NONE')) {
+      // 陸上・自主練・休みの日
+      const types = attendEntries.map(a => ({AM:'午前',PM:'午後',JISHU:'自主練',LAND:'陸上',NONE:'休み'}[a.session]||a.session));
+      html += `<div style="background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:12px;font-size:13px;color:var(--sub)">
+        ${esc(types.join(' / '))} の日（水泳メニューなし）
+      </div>`;
+    } else {
+      html += `<div style="background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:12px;font-size:13px;color:var(--sub)">
+        参加したセッションに対応するメニューが見つかりませんでした
+      </div>`;
+    }
+  }
+
+  if (!anyMenu) {
+    html += `<div class="empty"><div class="empty-icon">📭</div>この週の参加記録・メニューが<br>まだありません</div>`;
+  } else if (weekTotalDist > 0) {
+    // 週サマリー
+    const distStr = weekTotalDist >= 1000 ? (weekTotalDist/1000).toFixed(1) + 'km' : weekTotalDist + 'm';
+    html += `<div style="background:var(--light);border:1px solid var(--mid);border-radius:var(--radius);padding:14px;margin-top:8px;display:flex;gap:20px;align-items:center">
+      <div style="text-align:center">
+        <div style="font-size:22px;font-weight:800;color:var(--dark)">${esc(distStr)}</div>
+        <div style="font-size:11px;color:var(--main)">週間合計距離</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:22px;font-weight:800;color:var(--dark)">${weekTotalSess}</div>
+        <div style="font-size:11px;color:var(--main)">実施セッション数</div>
+      </div>
+    </div>`;
+  }
+
+  wrap.innerHTML = html;
+}
+
+
+// ══ タブ5：印刷・PDF（index.htmlと同一コンパクトレイアウト） ══
+let printViewMode = 'today'; // 'today' | 'week' | 'date' | 'range'
+let printSingleDate = todayKey();
+let printRangeFrom  = todayKey();
+let printRangeTo    = todayKey();
+
+function renderPrint() {
+  const wrap = document.getElementById('main-wrap');
+  if (!teamData) {
+    wrap.innerHTML = '<div class="empty"><div class="empty-icon">🔒</div>データが読み込まれていません。<br>右下の⚙️から設定してください。</div>';
+    return;
+  }
+
+  const weekPlan = teamData.weekPlan || {};
+  const menus    = teamData.menus    || {};
+  const ZONES    = { wu:'W-up', swim:'Swim', kick:'Kick', pull:'Pull', drill:'Drill', loos:'Loosen', down:'Down' };
+  const DAYS     = ['日','月','火','水','木','金','土'];
+
+  // 表示対象の日付リストを作成
+  let targetDays = [];
+  if (printViewMode === 'today') {
+    targetDays = [todayKey()];
+  } else if (printViewMode === 'week') {
+    const base = new Date(TODAY);
+    base.setDate(base.getDate() - base.getDay() + 1);
+    for (let i = 0; i < 7; i++) targetDays.push(dateKey(addDays(base, i)));
+  } else if (printViewMode === 'date') {
+    targetDays = [printSingleDate];
+  } else if (printViewMode === 'range') {
+    const from = new Date(printRangeFrom + 'T00:00:00');
+    const to   = new Date(printRangeTo   + 'T00:00:00');
+    for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+      targetDays.push(dateKey(new Date(d)));
+      if (targetDays.length > 31) break; // 最大31日
+    }
+  }
+
+  // PDFカード生成
+  function buildPdfCard(dk, slot, m) {
+    const d    = new Date(dk + 'T00:00:00');
+    const ds   = d.getFullYear() + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' + String(d.getDate()).padStart(2,'0');
+    const dow  = DAYS[d.getDay()];
+    const sess = slot.session || '';
+    const dist = m.totalDist ? m.totalDist.toLocaleString() + 'm' : '0m';
+    const assmT  = m.assmTime  || '';
+    const startT = m.startTime || '';
+    const endT   = m.endTime   || '';
+    const swimT  = startT && endT ? startT + ' 〜 ' + endT : startT ? startT + ' 〜' : endT ? '〜 ' + endT : '';
+
+    // グループ別距離計算
+    let totalDist = 0;
+    (m.items || []).forEach(it => { totalDist += (it.dist || 0) * (it.reps || 1); });
+
+    // 種目行を生成
+    let tRows = '';
+    (m.items || []).forEach(it => {
+      const iColor  = it.intColor || '#94A3B8';
+      const iCat    = it.intCat   || '';
+      const opts    = it.opts && it.opts.length ? it.opts.join(', ') : '';
+      // 目標タイムは非表示
+      const intBadge = iCat
+        ? '<span class="ic-color" style="background:' + iColor + '"></span><span style="font-size:8.5px;font-weight:700;color:' + iColor + '">' + iCat + '</span>'
+        : '';
+      const parts = [
+        (it.reps > 1 ? it.reps + 'x' : '') + it.dist + 'm' + (it.cyc ? ' @' + it.cyc : ''),
+        it.stroke || '',
+        opts,
+        intBadge,
+        it.memo || ''
+      ].filter(x => x);
+      tRows += '<tr>' +
+        '<td class="cpt-grp">ALL</td>' +
+        '<td class="cpt-zone">' + esc(ZONES[it.zone] || it.zone || '') + '</td>' +
+        '<td class="cpt-sets"></td>' +
+        '<td class="cpt-brace"></td>' +
+        '<td class="cpt-desc">' + parts.join(' , ') + '</td>' +
+        '</tr>';
+    });
+
+    const noteHtml = m.coachNote
+      ? '<div style="margin-top:8px;font-size:9px;background:#FEF9EE;padding:6px 8px;border-radius:4px;color:#92400E">📝 ' + esc(m.coachNote) + '</div>'
+      : '';
+
+    return '<div class="pdf-wrap">' +
+      '<div class="pdf-club-title">' + esc(m.title || '（無題）') + '</div>' +
+      '<div class="pdf-meta">' +
+        '<span><b>日付:</b> ' + ds + ' (' + dow + ') ' + esc(sess) + '</span>' +
+        (m.group ? '<span><b>グループ:</b> ' + esc(m.group) + '</span>' : '') +
+        '<span><b>距離:</b> ' + esc(dist) + '</span>' +
+        (assmT ? '<span><b>集合:</b> ' + esc(assmT) + '</span>' : '') +
+        (swimT ? '<span><b>スイム:</b> ' + esc(swimT) + '</span>' : '') +
+      '</div>' +
+      (m.items && m.items.length
+        ? '<table class="cpt-tbl"><tbody>' + tRows + '</tbody></table>'
+        : '<div style="color:#aaa;font-size:10px;padding:8px">種目なし</div>') +
+      noteHtml +
+      '<div class="pdf-foot"><span>' + ds + ' ' + esc(sess) + '</span><span>SwimCoach</span><span>' + new Date().toLocaleDateString('ja-JP') + '</span></div>' +
+    '</div>';
+  }
+
+  // メイン描画
+  const btnStyle = (mode) =>
+    'pdf-view-btn' + (printViewMode === mode ? ' active' : '');
+
+  let html =
+    '<div class="pdf-view-toggle" style="flex-wrap:wrap;gap:6px">' +
+      '<button class="' + btnStyle('today') + '" onclick="setPrintView(&quot;today&quot;)">今日</button>' +
+      '<button class="' + btnStyle('week')  + '" onclick="setPrintView(&quot;week&quot;)">今週</button>' +
+      '<button class="' + btnStyle('date')  + '" onclick="setPrintView(&quot;date&quot;)">日付指定</button>' +
+      '<button class="' + btnStyle('range') + '" onclick="setPrintView(&quot;range&quot;)">期間指定</button>' +
+    '</div>';
+
+  // 日付指定UI
+  if (printViewMode === 'date') {
+    html += '<div style="background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:12px">' +
+      '<div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:8px">印刷する日付を選択</div>' +
+      '<input type="date" id="print-date-input" value="' + printSingleDate + '" style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:var(--radius-sm);font-size:14px;background:var(--bg)" onchange="printSingleDate=this.value;renderPrint()">' +
+    '</div>';
+  }
+
+  // 期間指定UI
+  if (printViewMode === 'range') {
+    html += '<div style="background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:12px">' +
+      '<div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:8px">印刷する期間を選択（最大31日）</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+        '<input type="date" id="print-from-input" value="' + printRangeFrom + '" style="flex:1;padding:10px 12px;border:1.5px solid var(--line);border-radius:var(--radius-sm);font-size:14px;background:var(--bg)" onchange="printRangeFrom=this.value;renderPrint()">' +
+        '<span style="font-size:13px;color:var(--sub)">〜</span>' +
+        '<input type="date" id="print-to-input" value="' + printRangeTo + '" style="flex:1;padding:10px 12px;border:1.5px solid var(--line);border-radius:var(--radius-sm);font-size:14px;background:var(--bg)" onchange="printRangeTo=this.value;renderPrint()">' +
+      '</div>' +
+    '</div>';
+  }
+
+  let hasAny = false;
+  targetDays.forEach(dk => {
+    const slots = weekPlan[dk] || [];
+    slots.forEach(slot => {
+      const m = menus[String(slot.menuId)];
+      if (!m || !isMyMenu(m)) return;
+      html += buildPdfCard(dk, slot, m);
+      hasAny = true;
+    });
+  });
+
+  const modeLabel = { today:'今日', week:'今週', date:'指定した日', range:'指定した期間' }[printViewMode] || '';
+  if (!hasAny) {
+    html += '<div class="empty"><div class="empty-icon">📭</div>' + modeLabel + 'のメニューはまだ登録されていません</div>';
+  } else {
+    html += '<button class="pdf-print-btn" onclick="window.print()"><i class="ti ti-printer"></i> 印刷 / PDFで保存</button>';
+  }
+
+  wrap.innerHTML = html;
+}
+
+function setPrintView(mode) {
+  printViewMode = mode;
+  // 日付指定モードのデフォルトを今日に
+  if (mode === 'date')  { printSingleDate = todayKey(); }
+  if (mode === 'range') { printRangeFrom = todayKey(); printRangeTo = todayKey(); }
+  renderPrint();
+}
+
+function changeHistWeek(dir) {
+  histOffset += dir;
+  historyData = null; // 再取得
+  renderHistory();
+}
+
+// ── 起動 ──
+applyUrlParams();
+init();
+</script>
+</body>
+</html>
