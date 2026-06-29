@@ -2385,6 +2385,21 @@ body { font-family: var(--font-sans); background: #111; display: flex; align-ite
         </div>
       </div>
 
+      <!-- ▼ チームデータ共有（menu.html / coach.html へ配信） -->
+      <div class="analytics-section" style="border:1.5px solid #3C3489;border-radius:var(--border-radius-lg);padding:14px">
+        <div class="analytics-section-title" style="color:#3C3489"><i class="ti ti-cloud-upload" style="color:#3C3489"></i>チームデータをFirebaseへ共有</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);line-height:1.7;margin-bottom:10px">
+          選手一覧・週間練習メニュー・PBタイムを <strong>menu.html</strong>（メニュー確認アプリ）で閲覧できるよう、Firebaseへ書き出します。
+        </div>
+        <div id="teamdata-sync-status" style="display:none;font-size:11px;padding:7px 10px;border-radius:var(--border-radius-md);margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button id="teamdata-sync-btn" onclick="syncTeamDataToFirebase()" style="padding:9px 16px;background:#3C3489;color:#fff;border:none;border-radius:var(--border-radius-md);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px">
+            <i class="ti ti-upload"></i> 今すぐ共有（同期）
+          </button>
+          <span id="teamdata-sync-last" style="font-size:10px;color:var(--color-text-tertiary)"></span>
+        </div>
+      </div>
+
       <!-- 入力フォーム（基本は選手アプリからの自動同期を使うため、普段は非表示。スマホが使えない選手用の手入力として残してある） -->
       <div class="analytics-section" id="cond-manual-form-section" style="display:none">
         <div class="analytics-section-title"><i class="ti ti-plus" style="color:#D4537E"></i>今日の記録（手入力）</div>
@@ -3476,7 +3491,7 @@ function renderWeekSidePanel(){
       const isToday=(dk===dateKey(today));
       const todayBtn=isToday?'<span style="font-size:9px;color:#27500A;font-weight:600">📅 今日</span>':
         `<button onclick="weekCopyToToday('${dk}',${ei})" style="font-size:9px;padding:2px 7px;border-radius:4px;border:0.5px solid #854F0B;background:transparent;color:#854F0B;cursor:pointer"><i class="ti ti-copy"></i> 今日へコピー</button>`;
-      html+=`<div class="week-assign-card"><div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;flex-wrap:wrap"><span style="font-size:10px;font-weight:700;color:${entry.session==='AM'?'#185FA5':'#0F6E56'}">${entry.session}</span>${todayBtn}<button class="del-btn" style="margin-left:auto" onclick="removeWeekEntry('${dk}',${ei})"><i class="ti ti-x"></i></button></div><div class="week-assign-title">${m.title}</div><div class="week-assign-meta">${m.totalDist.toLocaleString()}m</div></div>`;});
+      html+=`<div class="week-assign-card"><div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;flex-wrap:wrap"><span style="font-size:10px;font-weight:700;color:${entry.session==='AM'?'#185FA5':'#0F6E56'}">${entry.session}</span>${todayBtn}<button class="del-btn" style="margin-left:auto" onclick="removeWeekEntry('${dk}',${ei})"><i class="ti ti-x"></i></button></div><div class="week-assign-title">${m.title}</div><div class="week-assign-meta">${m.totalDist.toLocaleString()}m</div><div style="display:flex;gap:5px;margin-top:6px"><button onclick="weekOpenPdf(${m.id})" style="flex:1;padding:4px 6px;font-size:10px;font-weight:700;border-radius:5px;border:0.5px solid #711B0C;background:#FEF3F1;color:#711B0C;cursor:pointer"><i class="ti ti-file-type-pdf"></i> Tr.MENU</button></div></div>`;});
     html+=`<div style="height:0.5px;background:var(--color-border-tertiary);margin:6px 0"></div>`;
   }
   if(!savedMenus.length){html+=`<div style="font-size:11px;color:var(--color-text-tertiary)">保存済みメニューがありません<br>メニュー画面→「保存」で登録できます</div>`;}
@@ -4026,6 +4041,9 @@ function quickSave(){
     pool:selPool,
     blocks:[...selBlocks],
     totalDist,
+    assmTime: fmtTime('t-assm-h','t-assm-m') || '',
+    startTime: fmtTime('t-start-h','t-start-m') || '',
+    endTime:   fmtTime('t-end-h','t-end-m') || '',
     items:JSON.parse(JSON.stringify(items)),
     groups:JSON.parse(JSON.stringify(groups)),
     dryItems:JSON.parse(JSON.stringify(dryItems)),
@@ -4041,7 +4059,7 @@ function saveMenuConfirm(){
   const tags=document.getElementById('save-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
   const coachNote=(document.getElementById('save-coach-note')||{value:''}).value.trim();
   const totalDist=items.reduce((s,it)=>{if(it.groupId&&groups[it.groupId])return s+it.dist*it.reps*groups[it.groupId].reps;return s+it.dist*it.reps;},0);
-  const snap={id:nextMenuId++,title,group,tags,coachNote,session,date:selDate?selDate.toLocaleDateString('ja-JP'):'',pool:selPool,blocks:[...selBlocks],totalDist,items:JSON.parse(JSON.stringify(items)),groups:JSON.parse(JSON.stringify(groups)),dryItems:JSON.parse(JSON.stringify(dryItems)),savedAt:new Date().toLocaleString('ja-JP')};
+  const snap={id:nextMenuId++,title,group,tags,coachNote,session,date:selDate?selDate.toLocaleDateString('ja-JP'):'',pool:selPool,blocks:[...selBlocks],totalDist,assmTime:fmtTime('t-assm-h','t-assm-m')||'',startTime:fmtTime('t-start-h','t-start-m')||'',endTime:fmtTime('t-end-h','t-end-m')||'',items:JSON.parse(JSON.stringify(items)),groups:JSON.parse(JSON.stringify(groups)),dryItems:JSON.parse(JSON.stringify(dryItems)),savedAt:new Date().toLocaleString('ja-JP')};
   savedMenus.unshift(snap);closeSaveDialog();document.getElementById('save-title').value='';document.getElementById('save-group').value='';document.getElementById('save-tags').value='';const cnEl=document.getElementById('save-coach-note');if(cnEl)cnEl.value='';showN('notice','メニューを保存しました ✓');renderDbList();
 }
 function renderDbList(){
@@ -6296,8 +6314,8 @@ function ppParseSheetRows(raw, sheetName) {
       var timeStr, dateStr, meetName, raceType, rankRaw, grade;
       if (isPatternA) {
         // パターンA: タイムがDate/number型
-        // 列オフセット: 200m系は列5〜、100m/50m系は列4〜（大会名の位置で判定）
-        var offA = (row[6] && typeof row[6] === 'string' && row[6].trim() !== '') ? 5 : 4;
+        // 列オフセット: 列4に日付（年）があれば100m/50m系（offA=4）、なければ200m系（offA=5）
+        var offA = (row[4] && typeof row[4] === 'string' && /\d{4}年/.test(row[4])) ? 4 : 5;
         timeStr  = xlsxSerialToTime(c0);
         dateStr  = ppJpDateToISO(row[offA]);
         meetName = row[offA+1] ? String(row[offA+1]).trim() : '';
@@ -7347,7 +7365,16 @@ function renderAthDetail() {
           '<button class="btn-sm2" onclick="athCopyAppLink('+a.id+')"><i class="ti ti-copy"></i> コピー</button>'+
           '<button class="btn-sm2 danger" onclick="athRevokeAppLink('+a.id+')"><i class="ti ti-refresh"></i> 再発行</button>'+
         '</div>'+
-        '<div style="font-size:10px;color:var(--color-text-tertiary);margin-top:5px">このURLを知っている人は誰でも記録を送信できます。第三者と共有しないよう選手に伝えてください。</div>'
+        '<div style="font-size:10px;color:var(--color-text-tertiary);margin-top:5px">このURLを知っている人は誰でも記録を送信できます。第三者と共有しないよう選手に伝えてください。</div>'+
+        // ── menu.html用URL ──
+        '<div style="margin-top:12px;padding-top:10px;border-top:0.5px solid var(--color-border-tertiary)">'+
+          '<div style="font-size:11px;font-weight:700;color:#0C4A6E;margin-bottom:6px"><i class="ti ti-calendar-event"></i> メニュー確認アプリ（menu.html）用URL</div>'+
+          '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'+
+            '<input type="text" id="ath-menulink-url-'+a.id+'" readonly value="'+escH(buildMenuLinkUrl(a))+'" style="flex:1;min-width:200px;font-size:11px;padding:6px 9px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-secondary);color:var(--color-text-secondary)">'+
+            '<button class="btn-sm2" style="color:#0C4A6E;border-color:#0C4A6E" onclick="athCopyMenuLink('+a.id+')"><i class="ti ti-copy"></i> コピー</button>'+
+          '</div>'+
+          '<div style="font-size:10px;color:var(--color-text-tertiary);margin-top:5px">このURLを選手に送るだけで、メニュー確認アプリの設定が自動入力されます。</div>'+
+        '</div>'
       :
         '<button class="btn-sm2" style="color:#3C3489;border-color:#3C3489" onclick="athIssueAppLink('+a.id+')"><i class="ti ti-link"></i> 連携URLを発行する</button>'
       )+
@@ -8039,6 +8066,35 @@ function buildAppLinkUrl(a) {
   var cfg = (typeof loadFbConfig === 'function') ? loadFbConfig() : null;
   if (cfg && cfg.landTypes) params.set('land', cfg.landTypes);
   return base + '?' + params.toString();
+}
+
+// ── menu.html用URL生成 ──
+var MENU_APP_BASE_URL = ''; // 例: 'https://your-domain.example.com/menu.html'
+
+function buildMenuLinkUrl(a) {
+  var cfg = (typeof loadFbConfig === 'function') ? loadFbConfig() : null;
+  var dbUrl = cfg ? cfg.databaseURL || '' : '';
+  var base = MENU_APP_BASE_URL || (location.origin + location.pathname.replace(/[^/]*$/, 'menu.html'));
+  var params = new URLSearchParams();
+  if (dbUrl)     params.set('db',    dbUrl);
+  if (a.appLinkId) params.set('id',  a.appLinkId);
+  if (a.name)    params.set('name',  a.name);
+  if (a.group)   params.set('group', a.group);
+  return base + '?' + params.toString();
+}
+
+function athCopyMenuLink(id) {
+  var a = athletes.find(function(x){ return x.id === id; });
+  if (!a || !a.appLinkId) { showN('warn', '先にplayer.html用URLを発行してください'); return; }
+  var url = buildMenuLinkUrl(a);
+  var inp = document.getElementById('ath-menulink-url-' + id);
+  if (inp) inp.value = url;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(function(){ showN('notice', 'メニューアプリURLをコピーしました ✓'); })
+      .catch(function(){ if (inp) { inp.select(); document.execCommand('copy'); showN('notice','コピーしました ✓'); } });
+  } else if (inp) {
+    inp.select(); document.execCommand('copy'); showN('notice', 'コピーしました ✓');
+  }
 }
 
 function athIssueAppLink(id) {
@@ -15285,6 +15341,165 @@ document.addEventListener('keydown', function(e) {
       if (typeof lsSave === 'function') lsSave();
     }
   };
+})();
+
+// ══ 週間計画からTr.MENUへジャンプ ══
+function weekOpenPdf(menuId) {
+  const m = savedMenus.find(function(x){ return x.id === menuId; });
+  if (!m) return;
+  // メニューを読み込む（確認なし）
+  items     = JSON.parse(JSON.stringify(m.items));
+  var maxId = 0; items.forEach(function(it){ if(it.id > maxId) maxId = it.id; }); nextId = maxId + 1;
+  groups    = JSON.parse(JSON.stringify(m.groups));
+  var maxGid = 0; Object.keys(groups).forEach(function(k){ if(parseInt(k) > maxGid) maxGid = parseInt(k); }); nextGid = maxGid + 1;
+  dryItems  = JSON.parse(JSON.stringify(m.dryItems));
+  session   = m.session || 'AM';
+  selPool   = m.pool    || 'long';
+  selBlocks = new Set(m.blocks || []);
+  // 時間情報を復元
+  if (m.assmTime) {
+    var ap = m.assmTime.split(':');
+    var ah = document.getElementById('t-assm-h'); if(ah) ah.value = ap[0]||'';
+    var am = document.getElementById('t-assm-m'); if(am) am.value = ap[1]||'';
+  }
+  if (m.startTime) {
+    var sp = m.startTime.split(':');
+    var sh = document.getElementById('t-start-h'); if(sh) sh.value = sp[0]||'';
+    var sm = document.getElementById('t-start-m'); if(sm) sm.value = sp[1]||'';
+  }
+  if (m.endTime) {
+    var ep = m.endTime.split(':');
+    var eh = document.getElementById('t-end-h'); if(eh) eh.value = ep[0]||'';
+    var em = document.getElementById('t-end-m'); if(em) em.value = ep[1]||'';
+  }
+  // 整合性チェック
+  items.forEach(function(it){ if(it.groupId != null && !groups[it.groupId]) it.groupId = null; });
+  Object.keys(groups).forEach(function(gid){
+    groups[gid].items = groups[gid].items.filter(function(id){ return items.find(function(x){ return x.id === id; }); });
+    if(groups[gid].items.length < 2){ groups[gid].items.forEach(function(id){ var x=items.find(function(y){ return y.id===id; }); if(x) x.groupId=null; }); delete groups[gid]; }
+  });
+  buildBlockRow(); buildPoolRow(); renderList(); updateStats(); renderDryList(); updateDryStats();
+  if(typeof updateDtSummary === 'function') updateDtSummary();
+  // Tr.MENUページへ直接ジャンプ
+  showPage('pdf');
+  if(typeof renderPdfPreview === 'function') renderPdfPreview();
+  showN('notice', '「' + m.title + '」をTr.MENUで開きました ✓');
+}
+
+// ══ チームデータをFirebaseへ共有 ══
+async function syncTeamDataToFirebase() {
+  var cfg = (typeof loadFbConfig === 'function') ? loadFbConfig() : null;
+  if (!cfg || !cfg.apiKey || !cfg.databaseURL) {
+    alert('Firebase設定が完了していません。「Firebase設定」から設定してください。');
+    if (typeof syncOpenConfigDialog === 'function') syncOpenConfigDialog();
+    return;
+  }
+
+  var btn = document.getElementById('teamdata-sync-btn');
+  var statusEl = document.getElementById('teamdata-sync-status');
+  var lastEl = document.getElementById('teamdata-sync-last');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i> 送信中…'; }
+  if (statusEl) { statusEl.style.display = 'block'; statusEl.style.background = '#EBF3FB'; statusEl.style.color = '#1F4E79'; statusEl.textContent = 'Firebaseへ送信中…'; }
+
+  try {
+    var base = cfg.databaseURL.replace(/\/$/, '');
+
+    // 選手データ
+    var athPayload = {};
+    (athletes || []).forEach(function(a) {
+      if (!a.id) return;
+      athPayload[String(a.id)] = {
+        name: a.name || '',
+        kana: a.kana || '',
+        gender: a.gender || '',
+        group: a.group || '',
+        mainEvent: a.mainEvent || '',
+        schoolType: a.schoolType || '',
+        enrollYear: a.enrollYear || '',
+        pbs: (a.pbs || []).map(function(p) { return { event: p.event, pool: p.pool, time: p.time, sec: p.sec }; }),
+        practiceTimes: (a.practiceTimes || []).slice(-50).map(function(pt) {
+          return { date: pt.date, event: pt.event, pool: pt.pool, time: pt.time, sec: pt.sec, note: pt.note || '' };
+        }),
+        appLinkId: a.appLinkId || ''
+      };
+    });
+
+    // メニューデータ
+    var menuPayload = {};
+    (savedMenus || []).forEach(function(m) {
+      menuPayload[String(m.id)] = {
+        id: m.id,
+        title: m.title || '',
+        group: m.group || '',
+        tags: m.tags || [],
+        totalDist: m.totalDist || 0,
+        coachNote: m.coachNote || '',
+        assmTime:  m.assmTime  || '',
+        startTime: m.startTime || '',
+        endTime:   m.endTime   || '',
+        items: (m.items || []).map(function(it) {
+          return {
+            zone: it.zone || '', stroke: it.stroke || '', dist: it.dist || 0,
+            reps: it.reps || 0, opts: it.opts || [],
+            intCat: it.intCat || '', intColor: it.intColor || '',
+            effectiveTimeSec: it.effectiveTimeSec || 0,
+            cyc: it.cyc || '', cycSec: it.cycSec || 0,
+            memo: it.memo || ''
+          };
+        })
+      };
+    });
+
+    // 週間計画（前後45日）
+    var weekPayload = {};
+    var today = new Date();
+    for (var di = -45; di <= 45; di++) {
+      var d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + di);
+      var dk = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      var slots = weekPlan[dk];
+      if (slots && slots.length) {
+        weekPayload[dk] = slots.map(function(s) {
+          var m = (savedMenus||[]).find(function(x){ return x.id === s.menuId; });
+          return { menuId: s.menuId, session: s.session, title: m ? (m.title||'') : '' };
+        });
+      }
+    }
+
+    // 標準記録
+    var stdPayload = (typeof STD_RECORDS !== 'undefined') ? STD_RECORDS : {};
+
+    // Firebaseへ書き込み（認証なしで直接PUT）
+    var writes = [
+      fetch(base + '/teamData/athletes.json',  { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(athPayload) }),
+      fetch(base + '/teamData/menus.json',     { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(menuPayload) }),
+      fetch(base + '/teamData/weekPlan.json',  { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(weekPayload) }),
+      fetch(base + '/teamData/stdRecords.json',{ method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(stdPayload) }),
+    ];
+    var results = await Promise.all(writes);
+    var hasError = results.some(function(r){ return !r.ok; });
+    if (hasError) throw new Error('書き込みに失敗しました');
+
+    var nowStr = new Date().toLocaleString('ja-JP');
+    localStorage.setItem('swimcoach_teamdata_last_sync', nowStr);
+    if (statusEl) { statusEl.style.background = '#EAF3DE'; statusEl.style.color = '#27500A'; statusEl.textContent = '✓ 共有しました！ menu.htmlから確認できます。'; }
+    if (lastEl)   { lastEl.textContent = '最終共有: ' + nowStr; }
+    if (typeof showN === 'function') showN('notice', 'チームデータをFirebaseへ共有しました ✓');
+
+  } catch(e) {
+    if (statusEl) { statusEl.style.background = '#FCEBEB'; statusEl.style.color = '#791F1F'; statusEl.textContent = 'エラー: ' + e.message; }
+    console.error('[syncTeamData]', e);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-upload"></i> 今すぐ共有（同期）'; }
+  }
+}
+
+// 設定ページ表示時に最終共有日時を表示
+(function(){
+  var last = localStorage.getItem('swimcoach_teamdata_last_sync');
+  if (last) {
+    var el = document.getElementById('teamdata-sync-last');
+    if (el) el.textContent = '最終共有: ' + last;
+  }
 })();
 </script></body>
 </html>
