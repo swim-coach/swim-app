@@ -547,6 +547,24 @@
     <button type="button" class="cancel-edit-btn" id="cancel-edit-btn" onclick="cancelEdit()">編集をやめて新規入力に戻る</button>
   </form>
 
+  <!-- ▼ バックアップ・復旧 -->
+  <div style="background:#F0FAFB;border:1px solid #B2E0E8;border-radius:14px;padding:14px;margin-bottom:14px">
+    <div style="font-size:13px;font-weight:800;color:#0C4A6E;margin-bottom:10px">💾 データのバックアップ・復旧</div>
+    <div style="font-size:11px;color:#64748B;line-height:1.7;margin-bottom:12px">
+      自分の記録をJSONファイルとしてスマホに保存できます。機種変更や万が一のデータ消失に備えて定期的にバックアップしてください。
+    </div>
+    <div style="display:flex;gap:8px;flex-direction:column">
+      <button onclick="backupMyData()" style="padding:12px;border:none;border-radius:10px;background:#0E7490;color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+        <i class="ti ti-download"></i> バックアップ（JSONダウンロード）
+      </button>
+      <label style="padding:12px;border:1.5px solid #0E7490;border-radius:10px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;color:#0E7490">
+        <i class="ti ti-upload"></i> 復旧（JSONファイルを選択）
+        <input type="file" id="restore-file-input" accept=".json" style="display:none" onchange="restoreMyData(this)">
+      </label>
+    </div>
+    <div id="backup-status" style="display:none;margin-top:10px;font-size:11px;padding:8px 12px;border-radius:8px"></div>
+  </div>
+
   <div class="hist">
     <div class="hist-title">記録の振り返り<span class="card-sub" style="font-size:10px">タップすると編集できます</span></div>
 
@@ -2313,6 +2331,112 @@
       document.querySelectorAll('[data-swim-ic]').forEach(function(el) {
         el.innerHTML = '🏊';
       });
+    }
+  }
+
+  // ── バックアップ・復旧 ──
+  async function backupMyData() {
+    const statusEl = document.getElementById('backup-status');
+    if (!isConfigured || !playerId) {
+      statusEl.style.display = 'block';
+      statusEl.style.background = '#FEE2E2';
+      statusEl.style.color = '#991B1B';
+      statusEl.textContent = 'Firebase未設定またはIDが不明のためバックアップできません。';
+      return;
+    }
+    statusEl.style.display = 'block';
+    statusEl.style.background = '#E0F2FE';
+    statusEl.style.color = '#0369A1';
+    statusEl.textContent = 'データを取得中…';
+    try {
+      const data = await dbGet('conditions/' + playerId);
+      if (!data) {
+        statusEl.style.background = '#FEF3C7';
+        statusEl.style.color = '#92400E';
+        statusEl.textContent = 'バックアップするデータがありません。';
+        return;
+      }
+      const payload = {
+        version: 1,
+        playerId: playerId,
+        exportedAt: new Date().toISOString(),
+        conditions: data
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      const dateStr = new Date().toLocaleDateString('ja-JP').split('/').join('-');
+      a.href     = url;
+      a.download = 'swimcoach_backup_' + dateStr + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      statusEl.style.background = '#D1FAE5';
+      statusEl.style.color = '#065F46';
+      statusEl.textContent = '✓ バックアップ完了！ファイルを安全な場所に保存してください。';
+    } catch(e) {
+      statusEl.style.background = '#FEE2E2';
+      statusEl.style.color = '#991B1B';
+      statusEl.textContent = 'エラー: ' + e.message;
+    }
+  }
+
+  async function restoreMyData(input) {
+    const statusEl = document.getElementById('backup-status');
+    const file = input.files[0];
+    if (!file) return;
+    if (!isConfigured || !playerId) {
+      statusEl.style.display = 'block';
+      statusEl.style.background = '#FEE2E2';
+      statusEl.style.color = '#991B1B';
+      statusEl.textContent = 'Firebase未設定またはIDが不明のため復旧できません。';
+      return;
+    }
+    try {
+      const text = await file.text();
+      const payload = JSON.parse(text);
+      if (!payload.conditions) throw new Error('正しいバックアップファイルではありません。');
+
+      // 確認ダイアログ
+      const count = Object.keys(payload.conditions).length;
+      const exportedAt = payload.exportedAt ? new Date(payload.exportedAt).toLocaleString('ja-JP') : '不明';
+      if (!confirm(
+        'バックアップファイルの情報：\n' +
+        '・記録件数: ' + count + '件\n' +
+        '・バックアップ日時: ' + exportedAt + '\n\n' +
+        'このデータをFirebaseに書き戻しますか？\n' +
+        '※既存のデータと統合されます（削除はされません）'
+      )) {
+        input.value = '';
+        return;
+      }
+
+      statusEl.style.display = 'block';
+      statusEl.style.background = '#E0F2FE';
+      statusEl.style.color = '#0369A1';
+      statusEl.textContent = '復旧中…';
+
+      // 既存データを取得して統合
+      const existing = await dbGet('conditions/' + playerId) || {};
+      const merged = Object.assign({}, existing, payload.conditions);
+
+      // Firebaseに書き戻し
+      await dbPut('conditions/' + playerId, merged);
+
+      statusEl.style.background = '#D1FAE5';
+      statusEl.style.color = '#065F46';
+      statusEl.textContent = '✓ 復旧完了！' + count + '件のデータを書き戻しました。';
+      input.value = '';
+
+      // 履歴を再読み込み
+      if (typeof loadHistory === 'function') loadHistory();
+
+    } catch(e) {
+      statusEl.style.background = '#FEE2E2';
+      statusEl.style.color = '#991B1B';
+      statusEl.textContent = 'エラー: ' + e.message;
+      input.value = '';
     }
   }
 
