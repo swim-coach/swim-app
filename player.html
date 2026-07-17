@@ -621,6 +621,11 @@
     </div>
 
     <div class="hist-pane" id="hist-pane-strength" style="display:none">
+      <div class="graph-card">
+        <div class="graph-title">推定1RMの推移<span class="card-sub">kg</span></div>
+        <select id="strength-1rm-exercise-sel" style="width:100%;font-size:12px;padding:7px 9px;margin-bottom:8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)"></select>
+        <div id="strength-1rm-chart"></div>
+      </div>
       <div id="strength-hist-list"></div>
     </div>
   </div>
@@ -2316,8 +2321,71 @@
     });
   }
 
+  function strengthEscHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // 記録のある種目名を、直近に記録した順で取得
+  function getStrengthExerciseNames() {
+    const days = getStrengthDays(); // 新しい日付順
+    const seen = new Map();
+    days.forEach(({ entry, date }) => {
+      entry.strengthLog.forEach(ex => {
+        const hasValid = ex.sets.some(s => s.reps > 0 && s.weight > 0);
+        if (!hasValid || seen.has(ex.name)) return;
+        seen.set(ex.name, date);
+      });
+    });
+    return Array.from(seen.keys());
+  }
+
+  // 指定した種目の「その日の推定1RM最大値」の推移を、古い→新しい順で返す
+  function buildEstimated1RMSeries(exerciseName) {
+    const days = getStrengthDays().slice().sort((a, b) => a.date.localeCompare(b.date));
+    const points = [];
+    days.forEach(({ entry, date }) => {
+      const ex = entry.strengthLog.find(e => e.name === exerciseName);
+      if (!ex) return;
+      const validSets = ex.sets.filter(s => s.reps > 0 && s.weight > 0);
+      if (!validSets.length) return;
+      const maxRm = Math.max(...validSets.map(s => calcEstimated1RM(s.weight, s.reps)));
+      points.push({ date, value: Math.round(maxRm * 10) / 10 });
+    });
+    return points;
+  }
+
+  let strength1RMSelectBound = false;
+  function renderStrength1RMChart() {
+    const sel = document.getElementById('strength-1rm-exercise-sel');
+    const chartEl = document.getElementById('strength-1rm-chart');
+    if (!sel || !chartEl) return;
+
+    const names = getStrengthExerciseNames();
+    if (!names.length) {
+      sel.innerHTML = '<option value="">記録がありません</option>';
+      sel.disabled = true;
+      chartEl.innerHTML = '<div style="font-size:11px;color:var(--sub);padding:10px 2px">まだ筋トレ（Strength）の記録がありません</div>';
+      return;
+    }
+    sel.disabled = false;
+
+    const prevValue = sel.value;
+    sel.innerHTML = names.map(n => `<option value="${strengthEscHtml(n)}">${strengthEscHtml(n)}</option>`).join('');
+    sel.value = names.includes(prevValue) ? prevValue : names[0];
+
+    chartEl.innerHTML = buildLineChartSVG(buildEstimated1RMSeries(sel.value), 'var(--orange)');
+
+    if (!strength1RMSelectBound) {
+      sel.addEventListener('change', () => {
+        chartEl.innerHTML = buildLineChartSVG(buildEstimated1RMSeries(sel.value), 'var(--orange)');
+      });
+      strength1RMSelectBound = true;
+    }
+  }
+
   function renderStrengthHistory() {
     renderStrengthHistoryList();
+    renderStrength1RMChart();
   }
 
   // ── アイコンフォントのフォールバック ──
