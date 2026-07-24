@@ -1139,16 +1139,6 @@ body { font-family: var(--font-sans); background: #111; display: flex; align-ite
         <div class="zone-grid" id="zone-grid"></div>
 
       </div>
-      <div>
-        <div class="sec-lbl">泳法</div>
-        <div class="stroke-grid" id="stroke-grid"></div>
-
-        <div style="margin-top:7px">
-          <div style="font-size:10px;color:var(--color-text-tertiary);margin-bottom:4px">オプション（複数選択可）</div>
-          <div class="opt-grid" id="opt-grid"></div>
-
-        </div>
-      </div>
       <!-- v66: 強度＋入力エリア 横並びレイアウト -->
       <div style="display:flex;gap:10px;align-items:flex-start">
 
@@ -1158,9 +1148,19 @@ body { font-family: var(--font-sans); background: #111; display: flex; align-ite
           <div class="int-palette" id="int-palette"></div>
         </div>
 
-        <!-- 右：本数・距離・サイクル・メモ・追加ボタン -->
+        <!-- 右：本数・距離・サイクル・対象グループ -->
         <div class="input-card" style="flex:1;min-width:0">
         <div class="edit-banner" id="edit-banner"><i class="ti ti-pencil" style="color:#F9A825"></i><span id="edit-banner-text" style="flex:1">編集モード</span><button onclick="cancelEdit()" style="padding:3px 8px;font-size:11px;cursor:pointer;border-radius:6px;border:0.5px solid #F9A825;background:#fff7e0;color:#7B5A00;white-space:nowrap"><i class="ti ti-x"></i> キャンセル（新規追加へ戻る）</button></div>
+        <div id="shorthand-input-row" style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <input type="text" id="shorthand-input" placeholder="例: 8×50 free @1:00" style="flex:1;font-size:13px;padding:7px 10px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);outline:none" onkeydown="if(event.key==='Enter'){event.preventDefault();parseShorthandInput();}">
+          <button type="button" onclick="parseShorthandInput()" style="padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;border-radius:var(--border-radius-md);border:none;background:#185FA5;color:#fff;white-space:nowrap;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-wand"></i> 解析</button>
+        </div>
+        <div id="voice-input-row" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <button type="button" id="voice-input-btn" onclick="toggleVoiceInput()" style="padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;border-radius:var(--border-radius-md);border:1.5px solid #185FA5;background:var(--color-background-primary);color:#185FA5;display:inline-flex;align-items:center;gap:5px;white-space:nowrap">
+            <i class="ti ti-microphone" id="voice-input-icon"></i> <span id="voice-input-label">音声入力</span>
+          </button>
+          <div id="voice-input-status" style="font-size:11px;color:var(--color-text-tertiary);flex:1;line-height:1.4"></div>
+        </div>
         <div class="row1" style="margin-top:4px">
           <div class="fg"><label>本数</label><div class="inp-u"><input type="text" id="reps-inp" value="1" inputmode="numeric" pattern="[0-9]*" oninput="onChg()"><span>×</span></div></div>
           <div class="fg"><label>距離</label><div class="inp-u"><input type="text" id="dist-inp" value="25" inputmode="numeric" pattern="[0-9]*" oninput="onChg()"><span>m</span></div></div>
@@ -1204,24 +1204,36 @@ body { font-family: var(--font-sans); background: #111; display: flex; align-ite
           </div>
           <div id="settime-parsed" style="font-size:10px;color:#185FA5;margin-top:4px;font-weight:500"></div>
         </div>
-        <div style="margin-bottom:10px">
+        <div style="margin-bottom:0">
           <div style="font-size:10px;color:var(--color-text-tertiary);margin-bottom:5px"><i class="ti ti-users-group" style="font-size:11px"></i> 対象グループ（省略=ALL）</div>
           <div style="display:flex;gap:4px;flex-wrap:wrap" id="tg-chips"></div>
         </div>
-        <div class="memo-field">
-          <input type="text" id="memo-inp" placeholder="メモ（メモ選択タブ or 直接入力）">
-          <button class="btn-memo" onclick="goToMemo()"><i class="ti ti-notes"></i> メモ選択</button>
-          <button class="btn-ico" onclick="clearMemoInp()"><i class="ti ti-x"></i></button>
-        </div>
-        <div class="btn-row">
-          <button class="btn-p" id="btn-add" onclick="addOrUpdate()"><i class="ti ti-plus"></i> メニューに追加</button>
-          <button class="btn btn-grp" id="grp-btn" onclick="toggleGrp()"><i class="ti ti-brackets-curly"></i> } グループ</button>
-        </div>
-        <div class="grp-hint" id="grp-hint">行をチェック（2行以上）→「グループ確定」を押してください</div>
-        <div class="notice" id="notice"></div>
         </div><!-- /input-card -->
 
       </div><!-- /強度＋入力 横並びラッパー -->
+
+      <div>
+        <div class="sec-lbl">泳法</div>
+        <div class="stroke-grid" id="stroke-grid"></div>
+
+        <div style="margin-top:7px">
+          <div style="font-size:10px;color:var(--color-text-tertiary);margin-bottom:4px">オプション（複数選択可）</div>
+          <div class="opt-grid" id="opt-grid"></div>
+
+        </div>
+      </div>
+
+      <div class="memo-field">
+        <input type="text" id="memo-inp" placeholder="メモ（メモ選択タブ or 直接入力）">
+        <button class="btn-memo" onclick="goToMemo()"><i class="ti ti-notes"></i> メモ選択</button>
+        <button class="btn-ico" onclick="clearMemoInp()"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="btn-row">
+        <button class="btn-p" id="btn-add" onclick="addOrUpdate()"><i class="ti ti-plus"></i> メニューに追加</button>
+        <button class="btn btn-grp" id="grp-btn" onclick="toggleGrp()"><i class="ti ti-brackets-curly"></i> } グループ</button>
+      </div>
+      <div class="grp-hint" id="grp-hint">行をチェック（2行以上）→「グループ確定」を押してください</div>
+      <div class="notice" id="notice"></div>
 
       <!-- 保存ダイアログ -->
       <div class="save-dialog" id="save-dialog">
@@ -3743,6 +3755,162 @@ function buildOptGrid(){
 function toggleOpt(o){selOpts.has(o)?selOpts.delete(o):selOpts.add(o);buildOptGrid();}
 function buildPalette(){document.getElementById('int-palette').innerHTML=INT_CATS.map(ic=>`<div class="int-row${ic.key===selInt?' selected':''}" onclick="selI('${ic.key}')"><div class="int-swatch" style="background:${ic.color};position:relative"><span style="color:${ic.tc}">${ic.name}</span>${ic.key===selInt?`<span style="position:absolute;top:2px;right:4px;color:${ic.tc};font-size:11px">✓</span>`:''}</div><div class="int-info">${ic.cat}</div></div>`).join('');}
 function selI(k){selInt=k;buildPalette();}
+
+// ══ 音声入力（セット内容の自動入力） ══════════════════════════
+var voiceRecognition = null;
+var voiceInputActive = false;
+
+function isVoiceInputSupported(){
+  return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+}
+
+var VOICE_ZONE_MAP = [
+  [/ウォームアップ|アップ|w[\-\s]?up|warm\s?up/i, 'wu'],
+  [/ドリル|\bdrill\b/i, 'drill'],
+  [/プル|\bpull\b/i, 'pull'],
+  [/キック|\bkick\b/i, 'kick'],
+  [/ルーズン|ゆるめ/, 'loos'],
+  [/ダウン|整理体操|\bcd\b|cool\s?down/i, 'down'],
+  [/スイム|\bswim\b/i, 'swim']
+];
+var VOICE_STROKE_MAP = [
+  [/バタフライ|フライ|\bfly\b|\bfl\b/i, 'Fly'],
+  [/背泳ぎ|バック|\bback\b|\bbk\b/i, 'Back'],
+  [/平泳ぎ|ブレスト|\bbreast\b|\bbr\b|\bbrst\b/i, 'Breast'],
+  [/自由形|クロール|フリー|\bfree\b|\bfr\b/i, 'Crawl'],
+  [/個人メドレー|メドレー|アイエム|\bim\b/i, 'IM'],
+  [/チョイス|\bchoice\b|\bch\b/i, 'Choice']
+];
+
+// 話した内容・手書き略記（例:「8本、50メートル、クロール、1分サイクル」「8×50 free @1:00」）から
+// 本数・距離・ゾーン・泳法・サイクルを抽出する（ベストエフォート）
+function parseVoiceSetText(text){
+  var result = {};
+
+  // 「8×50」「8x50」のような本数×距離のまとめ表記を優先的に解釈
+  var combo = text.match(/(\d+)\s*[x×]\s*(\d+)/i);
+  if (combo) {
+    result.reps = parseInt(combo[1]);
+    result.dist = parseInt(combo[2]);
+  } else {
+    var repsM = text.match(/(\d+)\s*本/);
+    if (repsM) result.reps = parseInt(repsM[1]);
+    var distM = text.match(/(\d+)\s*(メートル|m)/i);
+    if (distM) result.dist = parseInt(distM[1]);
+  }
+
+  for (var i=0;i<VOICE_ZONE_MAP.length;i++){
+    if (VOICE_ZONE_MAP[i][0].test(text)) { result.zone = VOICE_ZONE_MAP[i][1]; break; }
+  }
+  for (var j=0;j<VOICE_STROKE_MAP.length;j++){
+    if (VOICE_STROKE_MAP[j][0].test(text)) { result.stroke = VOICE_STROKE_MAP[j][1]; break; }
+  }
+
+  // 「@1:00」のようなショートハンドのサイクル表記を優先し、なければ日本語表記を順に試す
+  var atCyc = text.match(/@\s*(\d+)\s*[:：]\s*(\d{1,2})/);
+  var cycM3 = !atCyc ? text.match(/(\d+)\s*[:：]\s*(\d{1,2})/) : null;
+  var cycM1 = (!atCyc && !cycM3) ? text.match(/(\d+)\s*分\s*(\d+)?\s*秒?/) : null;
+  var cycM2 = (!atCyc && !cycM3 && !cycM1) ? text.match(/(\d+)\s*秒/) : null;
+  if (atCyc) {
+    result.cycM = atCyc[1]; result.cycS = atCyc[2];
+  } else if (cycM3) {
+    result.cycM = cycM3[1]; result.cycS = cycM3[2];
+  } else if (cycM1) {
+    result.cycM = cycM1[1]; result.cycS = cycM1[2] || '00';
+  } else if (cycM2) {
+    var totalSec = parseInt(cycM2[1]);
+    result.cycM = String(Math.floor(totalSec/60));
+    result.cycS = String(totalSec%60).padStart(2,'0');
+  }
+
+  return result;
+}
+
+// 解析結果をフォームへ反映する（自動追加はしない。コーチが確認してから「メニューに追加」を押す）
+function applyVoiceParsedToForm(parsed, rawText){
+  var appliedParts = [];
+  if (parsed.reps != null) { document.getElementById('reps-inp').value = parsed.reps; appliedParts.push(parsed.reps+'本'); }
+  if (parsed.dist != null) { document.getElementById('dist-inp').value = parsed.dist; appliedParts.push(parsed.dist+'m'); }
+  if (parsed.zone) { selZ(parsed.zone); appliedParts.push((ZONES[parsed.zone]&&ZONES[parsed.zone].label)||parsed.zone); }
+  if (parsed.stroke) { selS(parsed.stroke); appliedParts.push(parsed.stroke); }
+  if (parsed.cycM != null) {
+    document.getElementById('intv-m').value = parsed.cycM;
+    document.getElementById('intv-s').value = parsed.cycS;
+    syncCyc();
+    appliedParts.push(parsed.cycM+':'+parsed.cycS);
+  }
+  onChg();
+
+  var statusEl = document.getElementById('voice-input-status');
+  if (!statusEl) return;
+  if (appliedParts.length) {
+    statusEl.innerHTML = '<i class="ti ti-check" style="color:#27500A"></i> 認識：「' + rawText + '」→ ' + appliedParts.join(' / ') + '　<span style="color:var(--color-text-tertiary)">内容を確認して「メニューに追加」を押してください</span>';
+  } else {
+    statusEl.innerHTML = '<i class="ti ti-alert-triangle" style="color:#854F0B"></i> 「' + rawText + '」から本数・距離・泳法などを認識できませんでした。手入力してください。';
+  }
+}
+
+// 手書き感覚のショートハンド入力欄（例:「8×50 free @1:00」）を解析してフォームに反映する
+function parseShorthandInput(){
+  var el = document.getElementById('shorthand-input');
+  if (!el) return;
+  var text = el.value.trim();
+  if (!text) return;
+  var parsed = parseVoiceSetText(text);
+  applyVoiceParsedToForm(parsed, text);
+}
+
+function toggleVoiceInput(){
+  var statusEl = document.getElementById('voice-input-status');
+  if (!isVoiceInputSupported()) {
+    if (statusEl) statusEl.innerHTML = '<i class="ti ti-alert-triangle" style="color:#854F0B"></i> このブラウザは音声入力に対応していません（Google ChromeでSwimTeamManagerを開いてください）。';
+    return;
+  }
+  if (voiceInputActive) { stopVoiceInput(); return; }
+
+  var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  voiceRecognition = new SpeechRec();
+  voiceRecognition.lang = 'ja-JP';
+  voiceRecognition.interimResults = false;
+  voiceRecognition.maxAlternatives = 1;
+
+  var btn = document.getElementById('voice-input-btn');
+  var label = document.getElementById('voice-input-label');
+
+  voiceRecognition.onstart = function(){
+    voiceInputActive = true;
+    if (btn) { btn.style.background = '#A32D2D'; btn.style.borderColor = '#A32D2D'; btn.style.color = '#fff'; }
+    if (label) label.textContent = '聞き取り中…（もう一度押すと停止）';
+    if (statusEl) statusEl.innerHTML = '<i class="ti ti-microphone" style="color:#A32D2D"></i> 話しかけてください（例：「8本、50メートル、クロール、1分サイクル」）';
+  };
+  voiceRecognition.onresult = function(e){
+    var text = e.results[0][0].transcript;
+    var parsed = parseVoiceSetText(text);
+    applyVoiceParsedToForm(parsed, text);
+  };
+  voiceRecognition.onerror = function(e){
+    if (statusEl) statusEl.innerHTML = '<i class="ti ti-alert-triangle" style="color:#A32D2D"></i> 音声認識エラー: ' + (e.error || '不明') + '（マイクの許可を確認してください）';
+  };
+  voiceRecognition.onend = function(){
+    voiceInputActive = false;
+    if (btn) { btn.style.background = 'var(--color-background-primary)'; btn.style.borderColor = '#185FA5'; btn.style.color = '#185FA5'; }
+    if (label) label.textContent = '音声入力';
+  };
+
+  try { voiceRecognition.start(); } catch(e) { if (statusEl) statusEl.textContent = '音声認識を開始できませんでした: ' + e.message; }
+}
+
+function stopVoiceInput(){
+  if (voiceRecognition) { try { voiceRecognition.stop(); } catch(e){} }
+}
+
+(function initVoiceInputUI(){
+  if (isVoiceInputSupported()) return;
+  var btn = document.getElementById('voice-input-btn');
+  var statusEl = document.getElementById('voice-input-status');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.45'; btn.style.cursor = 'not-allowed'; btn.title = 'このブラウザは音声入力に対応していません（Google Chrome推奨）'; }
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--color-text-tertiary)">音声入力はGoogle Chromeでのみ利用できます（現在のブラウザは非対応）</span>';
+})();
 
 function parseSec(s){if(!s||!s.trim())return null;s=s.trim();if(/^\d+$/.test(s))return parseInt(s);const m=s.match(/^(\d+):(\d{1,2})$/);if(m)return parseInt(m[1])*60+parseInt(m[2]);return null;}
 function fmtSec(s){if(s==null)return'—';const m=Math.floor(s/60),r=s%60;return m>0?(r>0?m+'分'+r+'秒':m+'分'):r+'秒';}
