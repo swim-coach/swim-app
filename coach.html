@@ -250,9 +250,26 @@
     loadAll();
   }
 
+  let customExercisesData = {}; // { playerId: [name, ...] }
+
+  async function fetchCustomExercises() {
+    try {
+      const res = await fetch(DB_BASE + '/players.json?auth=' + idToken);
+      if (!res.ok) return {};
+      const data = await res.json();
+      if (!data) return {};
+      const result = {};
+      Object.keys(data).forEach(pid => {
+        const arr = data[pid] && data[pid].customExercises;
+        if (Array.isArray(arr) && arr.length) result[pid] = arr;
+      });
+      return result;
+    } catch (e) { return {}; }
+  }
+
   async function loadAll() {
     try {
-      allData = await fetchAllConditions();
+      [allData, customExercisesData] = await Promise.all([fetchAllConditions(), fetchCustomExercises()]);
       renderToday();
       renderTeam();
       renderPlayerSelect();
@@ -529,6 +546,17 @@
       html += '<button type="button" onclick="showAllDetailRows()" style="width:100%;margin-top:12px;padding:11px;border-radius:10px;border:1.5px dashed var(--line);background:transparent;font-size:12.5px;font-weight:600;color:var(--sub);cursor:pointer">すべて表示（' + filtered.length + '件）</button>';
     }
     html += '</div>';
+
+    // カスタム種目パネル
+    const customEx = customExercisesData[playerId];
+    if (customEx && customEx.length) {
+      html += '<div class="panel"><div class="panel-title">選手が追加した種目<span class="card-sub">' + customEx.length + '件</span></div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 0">';
+      customEx.forEach(name => {
+        html += '<span style="display:inline-block;padding:5px 12px;border-radius:20px;background:#EEEDFE;color:#3C3489;font-size:12px;font-weight:600">' + escapeHtml(name) + '</span>';
+      });
+      html += '</div></div>';
+    }
 
     wrap.innerHTML = html;
   }
