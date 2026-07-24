@@ -517,6 +517,8 @@
       return;
     }
 
+    detailFilteredForCharts = filtered; // 推定1RMグラフの種目切替（renderDetail1RMChart）から参照する
+
     const weightPoints = buildSinglePlayerSeries(filtered, 'wakeWeight');
     const rpePoints = buildSinglePlayerSeries(filtered, 'rpe');
     const fatiguePoints = buildSinglePlayerSeries(filtered, 'fatigue');
@@ -526,6 +528,10 @@
     html += '<div class="panel"><div class="panel-title">RPE・疲労度の推移</div>' +
       buildLegendHtml([{ label: 'RPE', color: 'var(--orange)', points: rpePoints }, { label: '疲労度', color: 'var(--blue)', points: fatiguePoints }]) +
       buildMultiLineChartSVG([{ label: 'RPE', color: 'var(--orange)', points: rpePoints }, { label: '疲労度', color: 'var(--blue)', points: fatiguePoints }]) + '</div>';
+
+    html += '<div class="panel"><div class="panel-title">推定1RMの推移<span class="card-sub">kg</span></div>' +
+      '<select id="detail-1rm-exercise-sel" onchange="renderDetail1RMChart()" style="width:100%;border:1.5px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12px;font-family:inherit;background:var(--bg);margin-bottom:10px"></select>' +
+      '<div id="detail-graph-1rm"></div></div>';
 
     const tableEntries = detailShowAll ? filtered : filtered.slice(0, DETAIL_TABLE_LIMIT);
     html += '<div class="panel"><div class="panel-title">記録一覧<span class="card-sub">' +
@@ -559,6 +565,67 @@
     }
 
     wrap.innerHTML = html;
+    renderDetail1RMChart();
+  }
+
+  // ══ 推定1RMの推移（選手用スマホアプリと同じロジック） ══
+  let detailFilteredForCharts = [];
+
+  function getStrengthDaysCH(entries) {
+    return entries
+      .filter(e => Array.isArray(e.strengthLog) && e.strengthLog.length && e.date)
+      .slice()
+      .sort((a, b) => (a.date < b.date ? -1 : 1));
+  }
+
+  function getStrengthExerciseNamesCH(entries) {
+    const days = getStrengthDaysCH(entries).slice().reverse(); // 新しい日付順
+    const seen = [];
+    days.forEach(e => {
+      e.strengthLog.forEach(ex => {
+        const hasValid = ex.sets && ex.sets.some(s => s.reps > 0 && s.weight > 0);
+        if (!hasValid || seen.indexOf(ex.name) >= 0) return;
+        seen.push(ex.name);
+      });
+    });
+    return seen;
+  }
+
+  function buildEstimated1RMSeriesCH(entries, exerciseName) {
+    const days = getStrengthDaysCH(entries);
+    const points = [];
+    days.forEach(e => {
+      const ex = e.strengthLog.find(x => x.name === exerciseName);
+      if (!ex) return;
+      const validSets = ex.sets.filter(s => s.reps > 0 && s.weight > 0);
+      if (!validSets.length) return;
+      const maxRm = Math.max(...validSets.map(s => calcEstimated1RM(s.weight, s.reps)));
+      points.push({ date: e.date, value: Math.round(maxRm * 10) / 10 });
+    });
+    return points;
+  }
+
+  function renderDetail1RMChart() {
+    const sel = document.getElementById('detail-1rm-exercise-sel');
+    const chartEl = document.getElementById('detail-graph-1rm');
+    if (!sel || !chartEl) return;
+
+    const entries = detailFilteredForCharts || [];
+    const names = getStrengthExerciseNamesCH(entries);
+    if (!names.length) {
+      sel.innerHTML = '<option value="">記録がありません</option>';
+      sel.disabled = true;
+      chartEl.innerHTML = '<div class="empty-msg" style="padding:10px 0">この期間の筋トレ（Strength）記録がありません</div>';
+      return;
+    }
+    sel.disabled = false;
+
+    const prevValue = sel.value;
+    sel.innerHTML = names.map(n => '<option value="' + escapeHtml(n) + '">' + escapeHtml(n) + '</option>').join('');
+    sel.value = names.includes(prevValue) ? prevValue : names[0];
+
+    const series = buildEstimated1RMSeriesCH(entries, sel.value);
+    chartEl.innerHTML = buildMultiLineChartSVG([{ label: sel.value, color: 'var(--orange)', points: series }]);
   }
 
   function toggleDetailRow(id) {
