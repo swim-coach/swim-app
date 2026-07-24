@@ -2497,6 +2497,11 @@ body { font-family: var(--font-sans); background: #111; display: flex; align-ite
         <div class="analytics-section-title"><i class="ti ti-target" style="color:#D4537E"></i>SSS（客観的練習負荷）の推移<span style="font-size:10px;color:var(--color-text-tertiary);font-weight:400;margin-left:6px">メニューから算出</span></div>
         <div id="cond-graph-sss"></div>
       </div>
+      <div class="analytics-section">
+        <div class="analytics-section-title"><i class="ti ti-barbell" style="color:#D4537E"></i>推定1RMの推移<span style="font-size:10px;color:var(--color-text-tertiary);font-weight:400;margin-left:6px">kg</span></div>
+        <select id="cond-1rm-exercise-sel" onchange="renderCond1RMChart()" style="width:100%;font-size:12px;padding:7px 9px;margin-bottom:8px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary)"></select>
+        <div id="cond-graph-1rm"></div>
+      </div>
       <div id="cond-empty" style="display:none;text-align:center;padding:30px;font-size:12px;color:var(--color-text-tertiary)">
         <i class="ti ti-heart-rate-monitor" style="font-size:32px;display:block;margin-bottom:8px;opacity:0.2"></i>
         選手を選んで記録を追加するとグラフが表示されます
@@ -14809,6 +14814,75 @@ function buildStrengthDetailHtmlSC(strengthLog) {
   return html;
 }
 
+// ══ コンディション日誌：推定1RMの推移（選手用スマホアプリと同じロジック） ══
+// 推定1RM = 重量 ×（1 + 回数 / 40）
+function calcEstimated1RMSC(weight, reps) {
+  if (!weight || !reps) return 0;
+  return weight * (1 + reps / 40);
+}
+
+var condFilteredForCharts = [];
+
+// Strength（陸上トレーニング）の種目記録があるconditionsだけを、日付昇順で取得
+function getStrengthDaysSC(conditions) {
+  return conditions
+    .filter(function(c){ return Array.isArray(c.strengthLog) && c.strengthLog.length && c.date; })
+    .slice()
+    .sort(function(a,b){ return a.date < b.date ? -1 : 1; });
+}
+
+// 記録のある種目名を、直近に記録した順で取得
+function getStrengthExerciseNamesSC(conditions) {
+  var days = getStrengthDaysSC(conditions).slice().reverse(); // 新しい日付順
+  var seen = [];
+  days.forEach(function(c) {
+    c.strengthLog.forEach(function(ex) {
+      var hasValid = ex.sets && ex.sets.some(function(s){ return s.reps > 0 && s.weight > 0; });
+      if (!hasValid || seen.indexOf(ex.name) >= 0) return;
+      seen.push(ex.name);
+    });
+  });
+  return seen;
+}
+
+// 指定した種目の「その日の推定1RM最大値」の推移を、古い→新しい順で返す
+function buildEstimated1RMSeriesSC(conditions, exerciseName) {
+  var days = getStrengthDaysSC(conditions);
+  var points = [];
+  days.forEach(function(c) {
+    var ex = c.strengthLog.find(function(e){ return e.name === exerciseName; });
+    if (!ex) return;
+    var validSets = ex.sets.filter(function(s){ return s.reps > 0 && s.weight > 0; });
+    if (!validSets.length) return;
+    var maxRm = Math.max.apply(null, validSets.map(function(s){ return calcEstimated1RMSC(s.weight, s.reps); }));
+    points.push({ date: c.date, value: Math.round(maxRm * 10) / 10 });
+  });
+  return points;
+}
+
+function renderCond1RMChart() {
+  var sel = document.getElementById('cond-1rm-exercise-sel');
+  var chartEl = document.getElementById('cond-graph-1rm');
+  if (!sel || !chartEl) return;
+
+  var conditions = condFilteredForCharts || [];
+  var names = getStrengthExerciseNamesSC(conditions);
+  if (!names.length) {
+    sel.innerHTML = '<option value="">記録がありません</option>';
+    sel.disabled = true;
+    chartEl.innerHTML = '<div style="font-size:11px;color:var(--color-text-tertiary);padding:10px 0">この期間の筋トレ（Strength）記録がありません</div>';
+    return;
+  }
+  sel.disabled = false;
+
+  var prevValue = sel.value;
+  sel.innerHTML = names.map(function(n){ return '<option value="'+escH(n)+'">'+escH(n)+'</option>'; }).join('');
+  sel.value = names.indexOf(prevValue) >= 0 ? prevValue : names[0];
+
+  var series = buildEstimated1RMSeriesSC(conditions, sel.value);
+  chartEl.innerHTML = buildMultiLineChartSVGsc([{ label: sel.value, color: '#854F0B', points: series }]);
+}
+
 function condRender() {
   var athId = parseInt(document.getElementById('cond-ath-sel').value);
   if (athId !== condDetailAthId) { condDetailDateFrom = ''; condDetailDateTo = ''; condDetailShowAll = false; }
@@ -14816,7 +14890,7 @@ function condRender() {
   var a = (typeof athletes !== 'undefined' ? athletes : []).find(function(x) { return x.id === athId; });
   var empty  = document.getElementById('cond-empty');
   var listEl = document.getElementById('cond-list');
-  var graphIds = ['cond-graph-weight','cond-graph-fatigue','cond-graph-sleep','cond-graph-rpe','cond-graph-sss'];
+  var graphIds = ['cond-graph-weight','cond-graph-fatigue','cond-graph-sleep','cond-graph-rpe','cond-graph-sss','cond-graph-1rm'];
   if (!a || !a.conditions || !a.conditions.length) {
     graphIds.forEach(function(id){ var el=document.getElementById(id); if (el) el.innerHTML=''; });
     if (empty)  empty.style.display  = 'block';
@@ -14830,6 +14904,7 @@ function condRender() {
   var filtered = sorted;
   if (condDetailDateFrom) filtered = filtered.filter(function(c){ return (c.date||'') >= condDetailDateFrom; });
   if (condDetailDateTo) filtered = filtered.filter(function(c){ return (c.date||'') <= condDetailDateTo; });
+  condFilteredForCharts = filtered; // 推定1RMグラフの種目切替（renderCond1RMChart）から参照する
 
   if (!filtered.length) {
     graphIds.forEach(function(id){ var el=document.getElementById(id); if (el) el.innerHTML = '<div style="font-size:11px;color:var(--color-text-tertiary);padding:10px 0">この期間の記録はありません</div>'; });
@@ -14899,6 +14974,9 @@ function condRender() {
     var el = document.getElementById('cond-graph-sss');
     if (el) el.innerHTML = buildLegendHtmlSC(defs) + buildMultiLineChartSVGsc(defs);
   })();
+
+  // 推定1RM（選手用スマホアプリと同じロジック）
+  renderCond1RMChart();
 
   // 一覧（直近30件まで。「すべて表示」で全件表示に切り替え）
   if (listEl) {
