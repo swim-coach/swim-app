@@ -2502,6 +2502,10 @@ body { font-family: var(--font-sans); background: #111; display: flex; align-ite
         <select id="cond-1rm-exercise-sel" onchange="renderCond1RMChart()" style="width:100%;font-size:12px;padding:7px 9px;margin-bottom:8px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary)"></select>
         <div id="cond-graph-1rm"></div>
       </div>
+      <div class="analytics-section">
+        <div class="analytics-section-title"><i class="ti ti-map-pin" style="color:#D4537E"></i>痛みの部位別サマリー<span style="font-size:10px;color:var(--color-text-tertiary);font-weight:400;margin-left:6px">選手アプリの痛みマップ</span></div>
+        <div id="cond-graph-pain"></div>
+      </div>
       <div id="cond-empty" style="display:none;text-align:center;padding:30px;font-size:12px;color:var(--color-text-tertiary)">
         <i class="ti ti-heart-rate-monitor" style="font-size:32px;display:block;margin-bottom:8px;opacity:0.2"></i>
         選手を選んで記録を追加するとグラフが表示されます
@@ -14823,7 +14827,6 @@ function calcEstimated1RMSC(weight, reps) {
 
 var condFilteredForCharts = [];
 
-// Strength（陸上トレーニング）の種目記録があるconditionsだけを、日付昇順で取得
 function getStrengthDaysSC(conditions) {
   return conditions
     .filter(function(c){ return Array.isArray(c.strengthLog) && c.strengthLog.length && c.date; })
@@ -14831,9 +14834,8 @@ function getStrengthDaysSC(conditions) {
     .sort(function(a,b){ return a.date < b.date ? -1 : 1; });
 }
 
-// 記録のある種目名を、直近に記録した順で取得
 function getStrengthExerciseNamesSC(conditions) {
-  var days = getStrengthDaysSC(conditions).slice().reverse(); // 新しい日付順
+  var days = getStrengthDaysSC(conditions).slice().reverse();
   var seen = [];
   days.forEach(function(c) {
     c.strengthLog.forEach(function(ex) {
@@ -14845,7 +14847,6 @@ function getStrengthExerciseNamesSC(conditions) {
   return seen;
 }
 
-// 指定した種目の「その日の推定1RM最大値」の推移を、古い→新しい順で返す
 function buildEstimated1RMSeriesSC(conditions, exerciseName) {
   var days = getStrengthDaysSC(conditions);
   var points = [];
@@ -14890,7 +14891,7 @@ function condRender() {
   var a = (typeof athletes !== 'undefined' ? athletes : []).find(function(x) { return x.id === athId; });
   var empty  = document.getElementById('cond-empty');
   var listEl = document.getElementById('cond-list');
-  var graphIds = ['cond-graph-weight','cond-graph-fatigue','cond-graph-sleep','cond-graph-rpe','cond-graph-sss','cond-graph-1rm'];
+  var graphIds = ['cond-graph-weight','cond-graph-fatigue','cond-graph-sleep','cond-graph-rpe','cond-graph-sss','cond-graph-1rm','cond-graph-pain'];
   if (!a || !a.conditions || !a.conditions.length) {
     graphIds.forEach(function(id){ var el=document.getElementById(id); if (el) el.innerHTML=''; });
     if (empty)  empty.style.display  = 'block';
@@ -14977,6 +14978,37 @@ function condRender() {
 
   // 推定1RM（選手用スマホアプリと同じロジック）
   renderCond1RMChart();
+
+  // 痛みマップ：部位別サマリー（選手用スマホアプリの痛みマップと同じ集計ロジック）
+  (function() {
+    var el = document.getElementById('cond-graph-pain');
+    if (!el) return;
+    var records = [];
+    filtered.forEach(function(c) {
+      if (!Array.isArray(c.painMap) || !c.painMap.length) return;
+      c.painMap.forEach(function(p){ records.push(p); });
+    });
+    if (!records.length) { el.innerHTML = '<div style="font-size:11px;color:var(--color-text-tertiary);padding:10px 0">この期間の痛みの記録はありません</div>'; return; }
+    var groups = {};
+    records.forEach(function(r) {
+      if (!groups[r.zoneLabel]) groups[r.zoneLabel] = { count: 0, sum: 0 };
+      groups[r.zoneLabel].count += 1;
+      groups[r.zoneLabel].sum += r.level;
+    });
+    var rows = Object.keys(groups).map(function(k){ return { key:k, count:groups[k].count, avg: groups[k].sum/groups[k].count }; });
+    rows.sort(function(a,b){ return b.count - a.count || b.avg - a.avg; });
+    var maxCount = Math.max.apply(null, rows.map(function(r){ return r.count; }));
+    var PAIN_COLORS = { mild:'#4FA88A', mid:'#E8A23D', severe:'#D5533F' };
+    function painColor(avg){ return avg <= 3 ? PAIN_COLORS.mild : (avg <= 7 ? PAIN_COLORS.mid : PAIN_COLORS.severe); }
+    el.innerHTML = rows.map(function(r) {
+      var pct = Math.round(r.count / maxCount * 100);
+      return '<div style="display:grid;grid-template-columns:110px 1fr 90px;align-items:center;gap:8px;padding:6px 0;font-size:11.5px">' +
+        '<div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escH(r.key)+'</div>' +
+        '<div style="background:var(--color-background-secondary);border-radius:999px;height:9px;overflow:hidden"><div style="height:100%;border-radius:999px;width:'+pct+'%;background:'+painColor(Math.round(r.avg))+'"></div></div>' +
+        '<div style="color:var(--color-text-tertiary);text-align:right;white-space:nowrap;font-size:10.5px">'+r.count+'件・平均'+r.avg.toFixed(1)+'</div>' +
+        '</div>';
+    }).join('');
+  })();
 
   // 一覧（直近30件まで。「すべて表示」で全件表示に切り替え）
   if (listEl) {
@@ -15254,6 +15286,7 @@ async function syncConditionsFromFirebase() {
           landTypes: Array.isArray(raw.landTypes) ? raw.landTypes : (raw.landType ? [raw.landType] : null), // 陸上トレーニング種別（複数選択対応）
           landMenu:  raw.landMenu || '',                            // Strength選択時のメニュー要約テキスト（後方互換）
           strengthLog: Array.isArray(raw.strengthLog) ? raw.strengthLog : null, // 種目別セット詳細（種目名・主働筋・セットごとの回数/重量）
+          painMap:   Array.isArray(raw.painMap) ? raw.painMap : [], // 痛みマップ（部位別の記録。選手アプリの痛みマップ機能）
           fatigue:   raw.fatigue != null ? raw.fatigue : null,
           sleep:     raw.sleep != null ? raw.sleep : null,   // 昼寝込みの合計睡眠時間
           sleepQ:    null, // 選手アプリでは未収集（既存項目との互換のためnull）
