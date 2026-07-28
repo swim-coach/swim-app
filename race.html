@@ -84,6 +84,10 @@
   .split-cell.sp-slow{background:#FCEBEB;border-color:#E24B4A}
   .split-cell.sp-slow .lt{color:#791F1F}
   .no-coach-lap{font-size:11px;color:var(--sub);padding:8px 0;margin-bottom:6px}
+
+  .reflection-box{border-top:1.5px dashed var(--line);padding-top:12px;margin-top:4px}
+  .reflection-save-btn{width:100%;padding:10px;border-radius:9px;border:none;background:var(--orange);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;margin-top:8px}
+  .reflection-save-status{font-size:10.5px;color:var(--green);margin-top:6px;display:none;text-align:center}
 </style>
 </head>
 <body>
@@ -160,6 +164,16 @@
   async function dbGet(path) {
     const res = await fetch(DB_BASE + '/' + path + '.json');
     if (!res.ok) throw new Error('取得エラー (HTTP ' + res.status + ')');
+    return res.json();
+  }
+
+  async function dbPut(path, data) {
+    const res = await fetch(DB_BASE + '/' + path + '.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('更新エラー (HTTP ' + res.status + ')');
     return res.json();
   }
 
@@ -251,6 +265,7 @@
   // ── データ状態 ──
   let athleteName = '';
   let races = [];       // teamData/athletes から取得した、コーチ側の試合結果（ラップ含む）
+  let raceNotes = {};   // raceNotes/{appLinkId} から取得した、選手自身の振り返りメモ（レースごと）
   let openRaceKeys = {}; // 一覧で開いている行の状態保持
 
   // 種目＋水路（長水路/短水路）の組み合わせごとに区別する（長水路・短水路はタイムが比較できないため）
@@ -406,6 +421,36 @@
     openRaceKeys[raceKey] = isOpen;
   }
 
+  // ── レースごとの振り返り（自由記述メモ） ──
+  function buildReflectionHtml(raceKey) {
+    const memo = (raceNotes[raceKey] && raceNotes[raceKey].memo) || '';
+    return `
+      <div class="reflection-box">
+        <div class="lap-sec-title">振り返り（任意）</div>
+        <textarea id="reflection-${escapeHtml(raceKey)}" placeholder="レースの振り返り（入り・ターン・ラストなど自由に）">${escapeHtml(memo)}</textarea>
+        <button type="button" class="reflection-save-btn" onclick="saveReflection('${raceKey}')">保存する</button>
+        <div class="reflection-save-status" id="reflection-save-status-${escapeHtml(raceKey)}">保存しました</div>
+      </div>
+    `;
+  }
+
+  async function saveReflection(raceKey) {
+    const textEl = document.getElementById('reflection-' + raceKey);
+    const memo = textEl ? textEl.value : '';
+    const data = { memo: memo, updatedAt: Date.now() };
+    try {
+      await dbPut('raceNotes/' + encodeURIComponent(playerId) + '/' + raceKey, data);
+      raceNotes[raceKey] = data;
+      const statusEl = document.getElementById('reflection-save-status-' + raceKey);
+      if (statusEl) {
+        statusEl.style.display = 'block';
+        setTimeout(() => { statusEl.style.display = 'none'; }, 2000);
+      }
+    } catch (e) {
+      alert('保存に失敗しました。通信環境を確認してもう一度お試しください。');
+    }
+  }
+
   // ── 試合結果一覧の並び替え（日付順・タイム順を選べる。タイムが無い/読めない行は末尾に回す） ──
   function sortRaces(list, mode) {
     const arr = list.slice();
@@ -474,6 +519,7 @@
           <div class="race-row-body">
             ${r.note ? '<div class="race-note">' + escapeHtml(r.note) + '</div>' : ''}
             ${buildCoachLapHtml(r)}
+            ${buildReflectionHtml(raceKey)}
           </div>
         </div>
       `;
@@ -497,6 +543,9 @@
       athleteName = match.name || '選手';
       races = Array.isArray(match.races) ? match.races : [];
       document.getElementById('player-name').textContent = athleteName + ' さん';
+
+      const notes = await dbGet('raceNotes/' + encodeURIComponent(playerId)) || {};
+      raceNotes = notes || {};
     } catch (e) {
       document.getElementById('player-name').textContent = '読み込みエラー';
       console.error(e);
