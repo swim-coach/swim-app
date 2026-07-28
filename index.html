@@ -15699,6 +15699,11 @@ async function syncTeamDataToFirebase() {
         practiceTimes: (a.practiceTimes || []).slice(-50).map(function(pt) {
           return { date: pt.date, event: pt.event, pool: pt.pool, time: pt.time, sec: pt.sec, note: pt.note || '' };
         }),
+        races: (a.races || []).map(function(r) {
+          var out = { meet: r.meet || '', date: r.date || '', event: r.event || '', pool: r.pool || '', time: r.time || '', rank: r.rank || '', tag: r.tag || '', note: r.note || '' };
+          if (r.laps50 && Object.keys(r.laps50).length) out.laps50 = r.laps50; // 選手アプリ「試合タイム」でのラップ表示・自己分析の突合用
+          return out;
+        }),
         appLinkId: a.appLinkId || ''
       };
     });
