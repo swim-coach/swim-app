@@ -36,6 +36,9 @@
     font-family:inherit;resize:vertical;min-height:56px;background:var(--bg);color:var(--ink)}
   textarea:focus{outline:none;border-color:var(--orange-bd)}
 
+  .finals-only-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink);margin-top:12px;cursor:pointer}
+  .finals-only-row input{width:16px;height:16px;flex-shrink:0}
+
   .tabs{display:flex;gap:6px;margin-bottom:14px}
   .tab-btn{flex:1;padding:10px 4px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);
     font-size:12.5px;font-weight:600;color:var(--sub);cursor:pointer;text-align:center}
@@ -45,6 +48,10 @@
 
   .graph-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
   .graph-title{font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+  .graph-legend{display:flex;flex-wrap:wrap;gap:10px;font-size:10px;color:var(--sub);margin-bottom:6px}
+  .graph-legend span{display:inline-flex;align-items:center;gap:4px}
+  .graph-legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+  .graph-legend-line{width:14px;height:0;border-top:1.5px dashed var(--sub);display:inline-block;flex-shrink:0}
   .pb-hint{font-size:11px;color:var(--sub);margin-top:8px;line-height:1.6}
   .pb-hint b{color:var(--orange)}
 
@@ -116,9 +123,18 @@
     <div class="card">
       <div class="card-label">種目を選択</div>
       <select id="event-sel" onchange="renderGraph()"></select>
+      <label class="finals-only-row">
+        <input type="checkbox" id="finals-only-chk" onchange="renderGraph()">
+        決勝のみで表示（タイム決勝を含む）
+      </label>
     </div>
     <div class="graph-card">
-      <div class="graph-title">タイムの推移<span class="card-sub">秒・小さいほど速い・点をタップで詳細</span></div>
+      <div class="graph-title">タイムの推移<span class="card-sub">点をタップで詳細</span></div>
+      <div class="graph-legend">
+        <span><i class="graph-legend-dot" style="background:#A32D2D"></i>最低タイム</span>
+        <span><i class="graph-legend-dot" style="background:#185FA5"></i>最高タイム</span>
+        <span><i class="graph-legend-line"></i>平均</span>
+      </div>
       <div id="race-graph"></div>
       <div class="graph-point-detail" id="graph-point-detail" style="display:none"></div>
       <div class="pb-hint" id="pb-hint"></div>
@@ -216,6 +232,11 @@
       : (siAdj + '.' + (hAdj < 10 ? '0' : '') + hAdj);
   }
 
+  // ── 決勝判定（コーチ側index.htmlの「決勝のみ」フィルターと同じ判定方法：noteに「決勝」の文字を含むかどうか。「タイム決勝」もこの判定に含まれる） ──
+  function isFinalRound(note) {
+    return !!note && String(note).includes('決勝');
+  }
+
   // ── Firebaseに保存する自己分析データのキー（大会名・日付・種目・タイムから生成） ──
   function raceKeyFor(r) {
     return (r.meet + '_' + r.date + '_' + r.event + '_' + r.time)
@@ -224,7 +245,7 @@
       .slice(0, 180) || 'race';
   }
 
-  // ── 折れ線グラフ（player.html / index.htmlと同系のSVG描画） ──
+  // ── 折れ線グラフ（player.html / index.htmlと同系のSVG描画。平均ラインと最速/最遅点の色分け付き） ──
   function buildLineChartSVG(points, color) {
     if (!points.length) {
       return '<div style="font-size:11px;color:var(--sub);padding:10px 2px">この種目の記録がまだありません</div>';
@@ -242,12 +263,25 @@
 
     const xy = points.map((p, i) => [xForI(i), yForVal(p.value)]);
     const pathD = xy.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
-    const dots = xy.map((p, i) =>
-      // タップ判定を広げるため、実際に見える点(r=3)の上に透明な大きめの円(r=10)を重ねてonclickを付ける
-      `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="${color}" pointer-events="none"></circle>` +
-      `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="10" fill="transparent" style="cursor:pointer" onclick="onGraphPointClick(${i})"></circle>` +
-      `<text x="${p[0].toFixed(1)}" y="${(p[1] - 8).toFixed(1)}" font-size="9" fill="var(--ink)" text-anchor="middle" pointer-events="none">${escapeHtml(secToTimeStr(points[i].value))}</text>`
-    ).join('');
+
+    // 最低タイム（＝一番速いタイム）と最高タイム（＝一番遅いタイム）の点を特定して色分けする
+    const minVal = Math.min(...vals), maxVal = Math.max(...vals);
+    const minIdx = vals.indexOf(minVal), maxIdx = vals.indexOf(maxVal);
+
+    const dots = xy.map((p, i) => {
+      let dotColor = color, radius = 3;
+      if (points.length > 1 && i === minIdx) { dotColor = '#A32D2D'; radius = 4; } // 最低タイム＝赤
+      if (points.length > 1 && i === maxIdx) { dotColor = '#185FA5'; radius = 4; } // 最高タイム＝青
+      return `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${radius}" fill="${dotColor}" pointer-events="none"></circle>` +
+        // タップ判定を広げるため、実際に見える点の上に透明な大きめの円(r=10)を重ねてonclickを付ける
+        `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="10" fill="transparent" style="cursor:pointer" onclick="onGraphPointClick(${i})"></circle>`;
+    }).join('');
+
+    // 平均ライン（破線）
+    const avgVal = vals.reduce((s, v) => s + v, 0) / vals.length;
+    const avgY = yForVal(avgVal);
+    const avgLine = `<line x1="${padL}" y1="${avgY.toFixed(1)}" x2="${W - padR}" y2="${avgY.toFixed(1)}" stroke="var(--sub)" stroke-width="1" stroke-dasharray="4,3"></line>` +
+      `<text x="${padL}" y="${(avgY - 4).toFixed(1)}" font-size="8" fill="var(--sub)" text-anchor="start">平均 ${escapeHtml(secToTimeStr(avgVal))}</text>`;
 
     const labelIdxs = points.length <= 5 ? points.map((_, i) => i) : [0, Math.floor((points.length - 1) / 2), points.length - 1];
     const labels = labelIdxs.map(i => {
@@ -257,6 +291,7 @@
     }).join('');
 
     return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+      ${avgLine}
       <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>
       ${dots}
       ${labels}
@@ -317,6 +352,7 @@
     const graphEl = document.getElementById('race-graph');
     const hintEl = document.getElementById('pb-hint');
     const detailEl = document.getElementById('graph-point-detail');
+    const finalsOnlyChk = document.getElementById('finals-only-chk');
     detailEl.style.display = 'none';
     detailEl.innerHTML = '';
     const key = sel.value;
@@ -327,9 +363,11 @@
       return;
     }
     const [ev, pool] = key.split('||');
-    const evRaces = races.filter(r => r.event === ev && (r.pool || '') === pool && r.time && timeToSec(r.time) != null)
-      .slice()
-      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    let evRaces = races.filter(r => r.event === ev && (r.pool || '') === pool && r.time && timeToSec(r.time) != null);
+    if (finalsOnlyChk && finalsOnlyChk.checked) {
+      evRaces = evRaces.filter(r => isFinalRound(r.note));
+    }
+    evRaces = evRaces.slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     currentGraphRaces = evRaces;
     const points = evRaces.map(r => ({ date: r.date, value: timeToSec(r.time) }));
     graphEl.innerHTML = buildLineChartSVG(points, 'var(--orange)');
