@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>試合タイム | SwimTeam Manager</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.35.0/tabler-icons.min.css">
+<style>
+  :root{
+    --orange:#854F0B; --orange-bg:#FAEEDA; --orange-bd:#E8C078;
+    --blue:#185FA5; --blue-bg:#E6F1FB;
+    --green:#27500A; --green-bg:#EAF3DE;
+    --red:#A32D2D; --red-bg:#FCEBEB;
+    --ink:#2B2B2B; --sub:#6E6E73; --line:#E5E1D8;
+    --bg:#FBFAF7; --card:#FFFFFF;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:var(--bg);color:var(--ink);
+    padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);overscroll-behavior-y:contain}
+  .wrap{max-width:480px;margin:0 auto;padding:18px 16px 40px}
+  .hdr{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .hdr-icon{width:34px;height:34px;border-radius:10px;background:var(--orange-bg);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;color:var(--orange)}
+  .hdr-name{font-size:17px;font-weight:700}
+  .hdr-date{font-size:12px;color:var(--sub);margin-top:1px}
+  .lead{font-size:12px;color:var(--sub);margin:14px 2px 18px;line-height:1.6}
+
+  .config-warn{background:var(--red-bg);color:var(--red);font-size:11.5px;border-radius:10px;padding:10px 12px;margin-bottom:14px;line-height:1.6}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.03)}
+  .card-label{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+  .card-sub{font-size:11px;color:var(--sub);font-weight:400;margin-left:auto}
+
+  select{width:100%;font-size:13px;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-family:inherit}
+
+  textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;
+    font-family:inherit;resize:vertical;min-height:56px;background:var(--bg);color:var(--ink)}
+  textarea:focus{outline:none;border-color:var(--orange-bd)}
+  input[type=text]{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--ink)}
+  input[type=text]:focus{outline:none;border-color:var(--orange-bd)}
+
+  .tabs{display:flex;gap:6px;margin-bottom:14px}
+  .tab-btn{flex:1;padding:10px 4px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);
+    font-size:12.5px;font-weight:600;color:var(--sub);cursor:pointer;text-align:center}
+  .tab-btn.active{background:var(--orange-bg);border-color:var(--orange-bd);color:var(--orange)}
+  .pane{display:none}
+  .pane.show{display:block}
+
+  .graph-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  .graph-title{font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+  .pb-hint{font-size:11px;color:var(--sub);margin-top:8px;line-height:1.6}
+  .pb-hint b{color:var(--orange)}
+
+  .empty-msg{font-size:12px;color:var(--sub);padding:24px 10px;text-align:center;border:1px dashed var(--line);border-radius:12px}
+
+  /* 試合結果一覧 */
+  .race-row{border:1.5px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden}
+  .race-row-hdr{padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px}
+  .race-row-main{flex:1;min-width:0}
+  .race-event{font-size:12.5px;font-weight:700;color:var(--ink);display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+  .race-meta{font-size:10.5px;color:var(--sub);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .race-time{font-size:16px;font-weight:800;color:var(--blue);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .race-chevron{font-size:13px;color:var(--sub);transition:transform .2s ease;flex-shrink:0}
+  .race-row.open .race-chevron{transform:rotate(180deg)}
+  .race-row.open .race-row-hdr{border-bottom:1px solid var(--line)}
+  .race-pb-badge{font-size:9px;font-weight:700;padding:2px 7px;background:#FEE2E2;color:#991B1B;border-radius:20px}
+  .race-rank-badge{font-size:9px;font-weight:700;padding:2px 7px;background:var(--blue-bg);color:var(--blue);border-radius:20px}
+  .race-row-body{display:none;padding:12px 14px 14px;background:var(--bg)}
+  .race-row.open .race-row-body{display:block}
+  .race-note{font-size:11.5px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:12px;line-height:1.6}
+
+  .lap-sec-title{font-size:10px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.04em;margin:0 0 6px}
+  .lap-grid{display:grid;gap:3px;margin-bottom:10px}
+  .lap-cell{background:var(--card);border:0.5px solid var(--line);border-radius:4px;padding:4px 6px;text-align:center}
+  .lap-cell .ld{font-size:8px;color:var(--sub);display:block}
+  .lap-cell .lt{font-size:11px;font-weight:600;color:var(--blue)}
+  .split-cell{background:var(--card);border:0.5px solid var(--line);border-radius:4px;padding:4px 6px;text-align:center}
+  .split-cell .ld{font-size:8px;color:var(--sub);display:block}
+  .split-cell .lt{font-size:11px;color:var(--ink)}
+  .split-cell.sp-fast{background:#E2EFDA;border-color:#70AD47}
+  .split-cell.sp-fast .lt{color:#27500A}
+  .split-cell.sp-slow{background:#FCEBEB;border-color:#E24B4A}
+  .split-cell.sp-slow .lt{color:#791F1F}
+  .no-coach-lap{font-size:11px;color:var(--sub);padding:8px 0;margin-bottom:6px}
+
+  .my-analysis-box{border-top:1.5px dashed var(--line);padding-top:12px;margin-top:4px}
+  .my-lap-row{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+  .my-lap-row .my-lap-idx{font-size:10.5px;color:var(--sub);width:34px;flex-shrink:0}
+  .my-lap-row .my-lap-del{flex-shrink:0;width:26px;height:26px;border-radius:7px;border:1px solid var(--line);background:var(--card);color:var(--red);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .my-lap-add{width:100%;padding:8px;border-radius:8px;border:1.5px dashed var(--line);background:transparent;font-size:11.5px;font-weight:600;color:var(--sub);cursor:pointer;margin-bottom:10px}
+  .my-save-btn{width:100%;padding:11px;border-radius:10px;border:none;background:var(--orange);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;margin-top:8px}
+  .my-save-status{font-size:10.5px;color:var(--green);margin-top:6px;display:none;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="hdr">
+    <div class="hdr-icon"><i class="ti ti-stopwatch"></i></div>
+    <div>
+      <div class="hdr-name" id="player-name">選手名を読込中…</div>
+      <div class="hdr-date">試合タイムの推移とラップ分析</div>
+    </div>
+  </div>
+  <div class="lead">これまでの試合結果をグラフで振り返ったり、ラップタイムを自分で記録・分析できます。</div>
+
+  <div id="config-warn" class="config-warn" style="display:none">
+    Firebase設定が未完了です。<br>このファイル内の <code>firebaseConfig</code> に、設定手順書で取得した値を貼り付けてください。
+  </div>
+
+  <div class="tabs">
+    <button type="button" class="tab-btn active" id="tab-graph" onclick="switchTab('graph')">タイムの推移</button>
+    <button type="button" class="tab-btn" id="tab-list" onclick="switchTab('list')">試合結果一覧</button>
+  </div>
+
+  <div class="pane show" id="pane-graph">
+    <div class="card">
+      <div class="card-label">種目を選択</div>
+      <select id="event-sel" onchange="renderGraph()"></select>
+    </div>
+    <div class="graph-card">
+      <div class="graph-title">タイムの推移<span class="card-sub">秒・小さいほど速い</span></div>
+      <div id="race-graph"></div>
+      <div class="pb-hint" id="pb-hint"></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-list">
+    <div id="race-list"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     Firebase SDK不要のREST API直叩き（player.htmlと同じ方式）
+     ════════════════════════════════════════════════════ -->
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCpZy9SpzQS3y6r2iZUVUttSAgslZ8R6JI",
+    authDomain: "swimcondition.firebaseapp.com",
+    databaseURL: "https://swimcondition-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "swimcondition",
+    storageBucket: "swimcondition.firebasestorage.app",
+    messagingSenderId: "900144045766",
+    appId: "1:900144045766:web:01e852342bf427160dc1c7"
+  };
+
+  const isConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY" && !!firebaseConfig.databaseURL;
+  if (!isConfigured) {
+    document.getElementById('config-warn').style.display = 'block';
+  }
+
+  const DB_BASE = (firebaseConfig.databaseURL || '').replace(/\/$/, '');
+
+  async function dbGet(path) {
+    const res = await fetch(DB_BASE + '/' + path + '.json');
+    if (!res.ok) throw new Error('取得エラー (HTTP ' + res.status + ')');
+    return res.json();
+  }
+
+  async function dbPut(path, data) {
+    const res = await fetch(DB_BASE + '/' + path + '.json', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('更新エラー (HTTP ' + res.status + ')');
+    return res.json();
+  }
+
+  // ── URLパラメータから選手固有ID（appLinkId）を取得。player.htmlと同じ ?id=... 形式 ──
+  const params = new URLSearchParams(window.location.search);
+  const playerId = params.get('id') || '';
+
+  function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+  }
+
+  function switchTab(t) {
+    ['graph','list'].forEach(k => {
+      document.getElementById('tab-' + k).classList.toggle('active', k === t);
+      document.getElementById('pane-' + k).classList.toggle('show', k === t);
+    });
+  }
+
+  // ── タイム文字列 → 秒数（"1:02.50" 形式にも対応） ──
+  function timeToSec(t) {
+    if (!t) return null;
+    const m = String(t).match(/^(\d+):(\d+\.?\d*)$/);
+    if (m) return parseInt(m[1], 10) * 60 + parseFloat(m[2]);
+    const v = parseFloat(t);
+    return isNaN(v) ? null : v;
+  }
+
+  function secToTimeStr(sec) {
+    if (sec == null || isNaN(sec)) return '—';
+    const m = Math.floor(sec / 60), s = sec - m * 60;
+    const si = Math.floor(s), h = Math.round((s - si) * 100);
+    let siAdj = si, hAdj = h, mAdj = m;
+    if (hAdj >= 100) { siAdj += 1; hAdj -= 100; }
+    if (siAdj >= 60) { mAdj += 1; siAdj -= 60; }
+    return mAdj > 0
+      ? (mAdj + ':' + (siAdj < 10 ? '0' : '') + siAdj + '.' + (hAdj < 10 ? '0' : '') + hAdj)
+      : (siAdj + '.' + (hAdj < 10 ? '0' : '') + hAdj);
+  }
+
+  // ── Firebaseに保存する自己分析データのキー（大会名・日付・種目・タイムから生成） ──
+  function raceKeyFor(r) {
+    return (r.meet + '_' + r.date + '_' + r.event + '_' + r.time)
+      .replace(/[.#$\[\]\/]/g, '_')
+      .replace(/\s+/g, '')
+      .slice(0, 180) || 'race';
+  }
+
+  // ── 折れ線グラフ（player.html / index.htmlと同系のSVG描画） ──
+  function buildLineChartSVG(points, color) {
+    if (!points.length) {
+      return '<div style="font-size:11px;color:var(--sub);padding:10px 2px">この種目の記録がまだありません</div>';
+    }
+    const W = 320, H = 130, padL = 8, padR = 8, padT = 14, padB = 20;
+    const vals = points.map(p => p.value);
+    let min = Math.min(...vals), max = Math.max(...vals);
+    if (min === max) { min -= 1; max += 1; }
+    const pad = (max - min) * 0.15;
+    min -= pad; max += pad;
+    const innerW = W - padL - padR, innerH = H - padT - padB;
+    const stepX = points.length > 1 ? innerW / (points.length - 1) : 0;
+    const xForI = i => padL + stepX * i;
+    const yForVal = v => padT + innerH - ((v - min) / (max - min)) * innerH;
+
+    const xy = points.map((p, i) => [xForI(i), yForVal(p.value)]);
+    const pathD = xy.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+    const dots = xy.map((p, i) =>
+      `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="${color}"></circle>` +
+      `<text x="${p[0].toFixed(1)}" y="${(p[1] - 8).toFixed(1)}" font-size="9" fill="var(--ink)" text-anchor="middle">${escapeHtml(secToTimeStr(points[i].value))}</text>`
+    ).join('');
+
+    const labelIdxs = points.length <= 5 ? points.map((_, i) => i) : [0, Math.floor((points.length - 1) / 2), points.length - 1];
+    const labels = labelIdxs.map(i => {
+      const d = (points[i].date || '').slice(5).replace('-', '/');
+      const anchor = i === 0 ? 'start' : (i === points.length - 1 ? 'end' : 'middle');
+      return `<text x="${xForI(i).toFixed(1)}" y="${H - 5}" font-size="9" fill="var(--sub)" text-anchor="${anchor}">${d}</text>`;
+    }).join('');
+
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+      <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>
+      ${dots}
+      ${labels}
+    </svg>`;
+  }
+
+  // ── データ状態 ──
+  let athleteName = '';
+  let races = [];       // teamData/athletes から取得した、コーチ側の試合結果（ラップ含む）
+  let raceNotes = {};    // raceNotes/{appLinkId} から取得した、選手自身の分析データ
+  let openRaceKeys = {}; // 一覧で開いている行の状態保持
+
+  function getDistinctEvents() {
+    const seen = [];
+    races.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).forEach(r => {
+      if (r.event && seen.indexOf(r.event) < 0) seen.push(r.event);
+    });
+    return seen;
+  }
+
+  function renderEventSelect() {
+    const sel = document.getElementById('event-sel');
+    const events = getDistinctEvents();
+    if (!events.length) {
+      sel.innerHTML = '<option value="">記録がありません</option>';
+      sel.disabled = true;
+      return;
+    }
+    sel.disabled = false;
+    sel.innerHTML = events.map(e => `<option value="${escapeHtml(e)}">${escapeHtml(e)}</option>`).join('');
+  }
+
+  function renderGraph() {
+    const sel = document.getElementById('event-sel');
+    const graphEl = document.getElementById('race-graph');
+    const hintEl = document.getElementById('pb-hint');
+    const ev = sel.value;
+    if (!ev) {
+      graphEl.innerHTML = '<div style="font-size:11px;color:var(--sub);padding:10px 2px">この種目の記録がまだありません</div>';
+      hintEl.textContent = '';
+      return;
+    }
+    const evRaces = races.filter(r => r.event === ev && r.time)
+      .slice()
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const points = evRaces.map(r => ({ date: r.date, value: timeToSec(r.time) })).filter(p => p.value != null);
+    graphEl.innerHTML = buildLineChartSVG(points, 'var(--orange)');
+    if (points.length) {
+      const best = points.reduce((m, p) => (p.value < m.value ? p : m), points[0]);
+      hintEl.innerHTML = '自己ベスト：<b>' + escapeHtml(secToTimeStr(best.value)) + '</b>（' + escapeHtml((best.date || '').replace(/-/g, '/')) + '）';
+    } else {
+      hintEl.textContent = '';
+    }
+  }
+
+  // ── コーチ記録のラップ（laps50＝各距離の通過タイム）から区間タイムを計算し、グリッドHTMLを作る ──
+  function buildCoachLapHtml(r) {
+    const laps = r.laps50 || {};
+    const keys = Object.keys(laps).map(Number).sort((a, b) => a - b);
+    if (!keys.length) {
+      return '<div class="no-coach-lap">コーチが記録したラップタイムはまだありません</div>';
+    }
+    const splitVals = [];
+    keys.forEach((k, i) => {
+      const pt = timeToSec(laps[k]);
+      const ppt = i > 0 ? timeToSec(laps[keys[i - 1]]) : 0;
+      if (pt != null && ppt != null) splitVals.push(pt - ppt);
+    });
+    const minSp = Math.min(...splitVals), maxSp = Math.max(...splitVals);
+    function splitCls(v) {
+      if (v <= minSp + 0.3) return 'sp-fast';
+      if (v >= maxSp - 0.3) return 'sp-slow';
+      return '';
+    }
+    let passHtml = '', splitHtml = '';
+    keys.forEach((k, i) => {
+      const pt = laps[k] || '';
+      const ptSec = timeToSec(pt);
+      const pptSec = i > 0 ? timeToSec(laps[keys[i - 1]]) : 0;
+      const spSec = (ptSec != null && pptSec != null) ? ptSec - pptSec : null;
+      const cls = spSec != null ? splitCls(spSec) : '';
+      passHtml += `<div class="lap-cell"><span class="ld">${k}m</span><span class="lt">${escapeHtml(pt)}</span></div>`;
+      splitHtml += `<div class="split-cell ${cls}"><span class="ld">${i + 1}本目</span><span class="lt">${escapeHtml(spSec != null ? secToTimeStr(spSec) : '—')}</span></div>`;
+    });
+    const cols = keys.length <= 6 ? 'repeat(' + keys.length + ',1fr)' : 'repeat(auto-fill,minmax(56px,1fr))';
+    return '<div class="lap-sec-title">コーチが記録した通過タイム</div>' +
+      '<div class="lap-grid" style="grid-template-columns:' + cols + '">' + passHtml + '</div>' +
+      '<div class="lap-sec-title">区間タイム　<span style="color:#27500A">■最速</span> <span style="color:#791F1F">■最遅</span></div>' +
+      '<div class="lap-grid" style="grid-template-columns:' + cols + '">' + splitHtml + '</div>';
+  }
+
+  // ── 選手自身のレース分析（ラップ入力＋振り返りメモ） ──
+  function buildMyAnalysisHtml(raceKey, note) {
+    const rows = (note && Array.isArray(note.laps) && note.laps.length) ? note.laps : [''];
+    const memo = note ? (note.memo || '') : '';
+    const rowsHtml = rows.map((v, i) => `
+      <div class="my-lap-row">
+        <span class="my-lap-idx">${i + 1}本目</span>
+        <input type="text" class="my-lap-input" data-key="${escapeHtml(raceKey)}" placeholder="例: 28.50" value="${escapeHtml(v)}">
+        <button type="button" class="my-lap-del" onclick="removeMyLapRow('${raceKey}', this)"><i class="ti ti-x"></i></button>
+      </div>
+    `).join('');
+    return `
+      <div class="my-analysis-box" id="my-analysis-${escapeHtml(raceKey)}">
+        <div class="lap-sec-title">自分のレース分析（任意・50mごとのラップタイム）</div>
+        <div id="my-lap-rows-${escapeHtml(raceKey)}">${rowsHtml}</div>
+        <button type="button" class="my-lap-add" onclick="addMyLapRow('${raceKey}')">＋ ラップを追加</button>
+        <textarea id="my-memo-${escapeHtml(raceKey)}" placeholder="レースの振り返り（入り・ターン・ラストなど自由に）">${escapeHtml(memo)}</textarea>
+        <button type="button" class="my-save-btn" onclick="saveMyAnalysis('${raceKey}')">保存する</button>
+        <div class="my-save-status" id="my-save-status-${escapeHtml(raceKey)}">保存しました</div>
+      </div>
+    `;
+  }
+
+  function addMyLapRow(raceKey) {
+    const wrap = document.getElementById('my-lap-rows-' + raceKey);
+    const idx = wrap.children.length + 1;
+    const row = document.createElement('div');
+    row.className = 'my-lap-row';
+    row.innerHTML = `<span class="my-lap-idx">${idx}本目</span>
+      <input type="text" class="my-lap-input" data-key="${escapeHtml(raceKey)}" placeholder="例: 28.50" value="">
+      <button type="button" class="my-lap-del" onclick="removeMyLapRow('${raceKey}', this)"><i class="ti ti-x"></i></button>`;
+    wrap.appendChild(row);
+  }
+
+  function removeMyLapRow(raceKey, btn) {
+    const wrap = document.getElementById('my-lap-rows-' + raceKey);
+    if (wrap.children.length <= 1) {
+      btn.closest('.my-lap-row').querySelector('input').value = '';
+      return;
+    }
+    btn.closest('.my-lap-row').remove();
+    Array.from(wrap.children).forEach((row, i) => {
+      row.querySelector('.my-lap-idx').textContent = (i + 1) + '本目';
+    });
+  }
+
+  async function saveMyAnalysis(raceKey) {
+    const wrap = document.getElementById('my-lap-rows-' + raceKey);
+    const laps = Array.from(wrap.querySelectorAll('.my-lap-input')).map(inp => inp.value.trim());
+    const memo = document.getElementById('my-memo-' + raceKey).value;
+    const data = { laps: laps, memo: memo, updatedAt: Date.now() };
+    try {
+      await dbPut('raceNotes/' + encodeURIComponent(playerId) + '/' + raceKey, data);
+      raceNotes[raceKey] = data;
+      const statusEl = document.getElementById('my-save-status-' + raceKey);
+      statusEl.style.display = 'block';
+      setTimeout(() => { statusEl.style.display = 'none'; }, 2000);
+    } catch (e) {
+      alert('保存に失敗しました。通信環境を確認してもう一度お試しください。');
+    }
+  }
+
+  function toggleRaceRow(raceKey) {
+    const el = document.getElementById('race-row-' + raceKey);
+    if (!el) return;
+    const isOpen = el.classList.toggle('open');
+    openRaceKeys[raceKey] = isOpen;
+  }
+
+  function renderRaceList() {
+    const listEl = document.getElementById('race-list');
+    if (!races.length) {
+      listEl.innerHTML = '<div class="empty-msg">まだ試合結果が登録されていません。コーチに確認してください。</div>';
+      return;
+    }
+    // 種目ごとの自己ベスト（秒）を先に計算しておく
+    const bestByEvent = {};
+    races.forEach(r => {
+      const sec = timeToSec(r.time);
+      if (sec == null || !r.event) return;
+      if (bestByEvent[r.event] == null || sec < bestByEvent[r.event]) bestByEvent[r.event] = sec;
+    });
+
+    const sorted = races.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    listEl.innerHTML = sorted.map(r => {
+      const raceKey = raceKeyFor(r);
+      const sec = timeToSec(r.time);
+      const isPB = sec != null && bestByEvent[r.event] != null && Math.abs(sec - bestByEvent[r.event]) < 0.005;
+      const dateLabel = (r.date || '').replace(/-/g, '/');
+      const openCls = openRaceKeys[raceKey] ? ' open' : '';
+      return `
+        <div class="race-row${openCls}" id="race-row-${escapeHtml(raceKey)}">
+          <div class="race-row-hdr" onclick="toggleRaceRow('${raceKey}')">
+            <div class="race-row-main">
+              <div class="race-event">${escapeHtml(r.event || '種目不明')}${isPB ? '<span class="race-pb-badge">自己ベスト</span>' : ''}${r.rank ? '<span class="race-rank-badge">' + escapeHtml(r.rank) + '位</span>' : ''}</div>
+              <div class="race-meta">${escapeHtml(dateLabel)}${r.meet ? '・' + escapeHtml(r.meet) : ''}${r.pool ? '（' + escapeHtml(r.pool) + '）' : ''}</div>
+            </div>
+            <div class="race-time">${escapeHtml(r.time || '—')}</div>
+            <i class="ti ti-chevron-down race-chevron"></i>
+          </div>
+          <div class="race-row-body">
+            ${r.note ? '<div class="race-note">' + escapeHtml(r.note) + '</div>' : ''}
+            ${buildCoachLapHtml(r)}
+            ${buildMyAnalysisHtml(raceKey, raceNotes[raceKey])}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ── 初期化：teamData/athletes から appLinkId 一致の選手を探し、試合結果と自己分析データを読み込む ──
+  async function init() {
+    if (!playerId) {
+      document.getElementById('player-name').textContent = '選手IDが指定されていません';
+      return;
+    }
+    try {
+      const allAthletes = await dbGet('teamData/athletes') || {};
+      const match = Object.values(allAthletes).find(a => a && a.appLinkId === playerId);
+      if (!match) {
+        document.getElementById('player-name').textContent = '選手データが見つかりません';
+        renderEventSelect(); renderGraph(); renderRaceList();
+        return;
+      }
+      athleteName = match.name || '選手';
+      races = Array.isArray(match.races) ? match.races : [];
+      document.getElementById('player-name').textContent = athleteName + ' さん';
+
+      const notes = await dbGet('raceNotes/' + encodeURIComponent(playerId)) || {};
+      raceNotes = notes || {};
+    } catch (e) {
+      document.getElementById('player-name').textContent = '読み込みエラー';
+      console.error(e);
+    }
+    renderEventSelect();
+    renderGraph();
+    renderRaceList();
+  }
+
+  init();
+</script>
+</body>
+</html>
