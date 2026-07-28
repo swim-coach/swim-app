@@ -35,9 +35,6 @@
   textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;
     font-family:inherit;resize:vertical;min-height:56px;background:var(--bg);color:var(--ink)}
   textarea:focus{outline:none;border-color:var(--orange-bd)}
-  input[type=text]{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--ink)}
-  input[type=text]:focus{outline:none;border-color:var(--orange-bd)}
-
   .tabs{display:flex;gap:6px;margin-bottom:14px}
   .tab-btn{flex:1;padding:10px 4px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);
     font-size:12.5px;font-weight:600;color:var(--sub);cursor:pointer;text-align:center}
@@ -49,6 +46,12 @@
   .graph-title{font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:6px;display:flex;align-items:center;gap:6px}
   .pb-hint{font-size:11px;color:var(--sub);margin-top:8px;line-height:1.6}
   .pb-hint b{color:var(--orange)}
+
+  .graph-point-detail{background:var(--bg);border:1.5px solid var(--orange-bd);border-radius:12px;padding:12px 14px;margin-top:10px}
+  .graph-point-detail .gpd-event{font-size:12.5px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .graph-point-detail .gpd-time{font-size:20px;font-weight:800;color:var(--blue);font-variant-numeric:tabular-nums}
+  .graph-point-detail .gpd-meta{font-size:11px;color:var(--sub);line-height:1.7}
+  .graph-point-detail .gpd-view-btn{margin-top:8px;width:100%;padding:9px;border-radius:9px;border:1.5px solid var(--orange-bd);background:var(--orange-bg);color:var(--orange);font-size:11.5px;font-weight:700;cursor:pointer}
 
   .empty-msg{font-size:12px;color:var(--sub);padding:24px 10px;text-align:center;border:1px dashed var(--line);border-radius:12px}
 
@@ -81,14 +84,6 @@
   .split-cell.sp-slow{background:#FCEBEB;border-color:#E24B4A}
   .split-cell.sp-slow .lt{color:#791F1F}
   .no-coach-lap{font-size:11px;color:var(--sub);padding:8px 0;margin-bottom:6px}
-
-  .my-analysis-box{border-top:1.5px dashed var(--line);padding-top:12px;margin-top:4px}
-  .my-lap-row{display:flex;align-items:center;gap:6px;margin-bottom:6px}
-  .my-lap-row .my-lap-idx{font-size:10.5px;color:var(--sub);width:34px;flex-shrink:0}
-  .my-lap-row .my-lap-del{flex-shrink:0;width:26px;height:26px;border-radius:7px;border:1px solid var(--line);background:var(--card);color:var(--red);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center}
-  .my-lap-add{width:100%;padding:8px;border-radius:8px;border:1.5px dashed var(--line);background:transparent;font-size:11.5px;font-weight:600;color:var(--sub);cursor:pointer;margin-bottom:10px}
-  .my-save-btn{width:100%;padding:11px;border-radius:10px;border:none;background:var(--orange);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;margin-top:8px}
-  .my-save-status{font-size:10.5px;color:var(--green);margin-top:6px;display:none;text-align:center}
 </style>
 </head>
 <body>
@@ -118,13 +113,25 @@
       <select id="event-sel" onchange="renderGraph()"></select>
     </div>
     <div class="graph-card">
-      <div class="graph-title">タイムの推移<span class="card-sub">秒・小さいほど速い</span></div>
+      <div class="graph-title">タイムの推移<span class="card-sub">秒・小さいほど速い・点をタップで詳細</span></div>
       <div id="race-graph"></div>
+      <div class="graph-point-detail" id="graph-point-detail" style="display:none"></div>
       <div class="pb-hint" id="pb-hint"></div>
     </div>
   </div>
 
   <div class="pane" id="pane-list">
+    <div class="card" style="padding:12px 16px">
+      <div class="card-label" style="margin-bottom:6px">種目・水路で絞り込み</div>
+      <select id="race-filter-sel" onchange="renderRaceList()" style="margin-bottom:12px"></select>
+      <div class="card-label" style="margin-bottom:6px">並び替え</div>
+      <select id="race-sort-sel" onchange="renderRaceList()">
+        <option value="date-desc">日付（新しい順）</option>
+        <option value="date-asc">日付（古い順）</option>
+        <option value="time-asc">タイム（速い順）</option>
+        <option value="time-desc">タイム（遅い順）</option>
+      </select>
+    </div>
     <div id="race-list"></div>
   </div>
 </div>
@@ -153,16 +160,6 @@
   async function dbGet(path) {
     const res = await fetch(DB_BASE + '/' + path + '.json');
     if (!res.ok) throw new Error('取得エラー (HTTP ' + res.status + ')');
-    return res.json();
-  }
-
-  async function dbPut(path, data) {
-    const res = await fetch(DB_BASE + '/' + path + '.json', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    if (!res.ok) throw new Error('更新エラー (HTTP ' + res.status + ')');
     return res.json();
   }
 
@@ -231,8 +228,10 @@
     const xy = points.map((p, i) => [xForI(i), yForVal(p.value)]);
     const pathD = xy.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
     const dots = xy.map((p, i) =>
-      `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="${color}"></circle>` +
-      `<text x="${p[0].toFixed(1)}" y="${(p[1] - 8).toFixed(1)}" font-size="9" fill="var(--ink)" text-anchor="middle">${escapeHtml(secToTimeStr(points[i].value))}</text>`
+      // タップ判定を広げるため、実際に見える点(r=3)の上に透明な大きめの円(r=10)を重ねてonclickを付ける
+      `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="${color}" pointer-events="none"></circle>` +
+      `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="10" fill="transparent" style="cursor:pointer" onclick="onGraphPointClick(${i})"></circle>` +
+      `<text x="${p[0].toFixed(1)}" y="${(p[1] - 8).toFixed(1)}" font-size="9" fill="var(--ink)" text-anchor="middle" pointer-events="none">${escapeHtml(secToTimeStr(points[i].value))}</text>`
     ).join('');
 
     const labelIdxs = points.length <= 5 ? points.map((_, i) => i) : [0, Math.floor((points.length - 1) / 2), points.length - 1];
@@ -252,43 +251,71 @@
   // ── データ状態 ──
   let athleteName = '';
   let races = [];       // teamData/athletes から取得した、コーチ側の試合結果（ラップ含む）
-  let raceNotes = {};    // raceNotes/{appLinkId} から取得した、選手自身の分析データ
   let openRaceKeys = {}; // 一覧で開いている行の状態保持
 
-  function getDistinctEvents() {
+  // 種目＋水路（長水路/短水路）の組み合わせごとに区別する（長水路・短水路はタイムが比較できないため）
+  function poolCombKey(event, pool) {
+    return (event || '') + '||' + (pool || '');
+  }
+
+  function getDistinctEventPoolCombos() {
     const seen = [];
+    const seenKeys = {};
     races.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).forEach(r => {
-      if (r.event && seen.indexOf(r.event) < 0) seen.push(r.event);
+      if (!r.event) return;
+      const key = poolCombKey(r.event, r.pool);
+      if (seenKeys[key]) return;
+      seenKeys[key] = true;
+      seen.push({ key: key, event: r.event, pool: r.pool || '', label: r.event + (r.pool ? '（' + r.pool + '）' : '（水路不明）') });
     });
     return seen;
   }
 
   function renderEventSelect() {
     const sel = document.getElementById('event-sel');
-    const events = getDistinctEvents();
-    if (!events.length) {
+    const combos = getDistinctEventPoolCombos();
+    if (!combos.length) {
       sel.innerHTML = '<option value="">記録がありません</option>';
       sel.disabled = true;
       return;
     }
     sel.disabled = false;
-    sel.innerHTML = events.map(e => `<option value="${escapeHtml(e)}">${escapeHtml(e)}</option>`).join('');
+    sel.innerHTML = combos.map(c => `<option value="${escapeHtml(c.key)}">${escapeHtml(c.label)}</option>`).join('');
   }
+
+  // ── 試合結果一覧タブの「種目・水路で絞り込み」セレクター（初期値は「すべて」） ──
+  function renderRaceFilterSelect() {
+    const sel = document.getElementById('race-filter-sel');
+    if (!sel) return;
+    const combos = getDistinctEventPoolCombos();
+    const prevValue = sel.value;
+    sel.innerHTML = '<option value="">すべての種目・水路</option>' +
+      combos.map(c => `<option value="${escapeHtml(c.key)}">${escapeHtml(c.label)}</option>`).join('');
+    sel.value = combos.some(c => c.key === prevValue) ? prevValue : '';
+  }
+
+  let currentGraphRaces = []; // 現在表示中のグラフの各点に対応するレースデータ（points と同じ並び順・添字で対応）
 
   function renderGraph() {
     const sel = document.getElementById('event-sel');
     const graphEl = document.getElementById('race-graph');
     const hintEl = document.getElementById('pb-hint');
-    const ev = sel.value;
-    if (!ev) {
+    const detailEl = document.getElementById('graph-point-detail');
+    detailEl.style.display = 'none';
+    detailEl.innerHTML = '';
+    const key = sel.value;
+    if (!key) {
       graphEl.innerHTML = '<div style="font-size:11px;color:var(--sub);padding:10px 2px">この種目の記録がまだありません</div>';
       hintEl.textContent = '';
+      currentGraphRaces = [];
       return;
     }
-    const evRaces = races.filter(r => r.event === ev && r.time)
+    const [ev, pool] = key.split('||');
+    const evRaces = races.filter(r => r.event === ev && (r.pool || '') === pool && r.time && timeToSec(r.time) != null)
       .slice()
       .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-    const points = evRaces.map(r => ({ date: r.date, value: timeToSec(r.time) })).filter(p => p.value != null);
+    currentGraphRaces = evRaces;
+    const points = evRaces.map(r => ({ date: r.date, value: timeToSec(r.time) }));
     graphEl.innerHTML = buildLineChartSVG(points, 'var(--orange)');
     if (points.length) {
       const best = points.reduce((m, p) => (p.value < m.value ? p : m), points[0]);
@@ -296,6 +323,36 @@
     } else {
       hintEl.textContent = '';
     }
+  }
+
+  // ── グラフの点をタップしたときに、そのレースの詳細（大会名・タイム・順位・水路）を表示する ──
+  function onGraphPointClick(i) {
+    const r = currentGraphRaces[i];
+    const detailEl = document.getElementById('graph-point-detail');
+    if (!r || !detailEl) return;
+    const dateLabel = (r.date || '').replace(/-/g, '/');
+    const raceKey = raceKeyFor(r);
+    detailEl.innerHTML = `
+      <div class="gpd-event">${escapeHtml(r.event || '種目不明')}${r.rank ? '<span class="race-rank-badge">' + escapeHtml(formatRank(r.rank)) + '</span>' : ''}</div>
+      <div class="gpd-time">${escapeHtml(r.time || '—')}</div>
+      <div class="gpd-meta">${escapeHtml(dateLabel)}${r.meet ? '・' + escapeHtml(r.meet) : ''}${r.pool ? '（' + escapeHtml(r.pool) + '）' : ''}</div>
+      ${r.note ? '<div class="gpd-meta">' + escapeHtml(r.note) + '</div>' : ''}
+      <button type="button" class="gpd-view-btn" onclick="viewRaceInList('${raceKey}')">試合結果一覧でラップを見る</button>
+    `;
+    detailEl.style.display = 'block';
+  }
+
+  // ── 一覧タブへ移動し、対象のレース行を開く ──
+  function viewRaceInList(raceKey) {
+    switchTab('list');
+    // 一覧側の絞り込みが原因で対象の行が表示されないことがないよう、グラフで選択中の種目・水路に合わせる
+    const eventSel = document.getElementById('event-sel');
+    const filterSel = document.getElementById('race-filter-sel');
+    if (eventSel && filterSel) filterSel.value = eventSel.value;
+    openRaceKeys[raceKey] = true;
+    renderRaceList();
+    const el = document.getElementById('race-row-' + raceKey);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   // ── コーチ記録のラップ（laps50＝各距離の通過タイム）から区間タイムを計算し、グリッドHTMLを作る ──
@@ -334,66 +391,12 @@
       '<div class="lap-grid" style="grid-template-columns:' + cols + '">' + splitHtml + '</div>';
   }
 
-  // ── 選手自身のレース分析（ラップ入力＋振り返りメモ） ──
-  function buildMyAnalysisHtml(raceKey, note) {
-    const rows = (note && Array.isArray(note.laps) && note.laps.length) ? note.laps : [''];
-    const memo = note ? (note.memo || '') : '';
-    const rowsHtml = rows.map((v, i) => `
-      <div class="my-lap-row">
-        <span class="my-lap-idx">${i + 1}本目</span>
-        <input type="text" class="my-lap-input" data-key="${escapeHtml(raceKey)}" placeholder="例: 28.50" value="${escapeHtml(v)}">
-        <button type="button" class="my-lap-del" onclick="removeMyLapRow('${raceKey}', this)"><i class="ti ti-x"></i></button>
-      </div>
-    `).join('');
-    return `
-      <div class="my-analysis-box" id="my-analysis-${escapeHtml(raceKey)}">
-        <div class="lap-sec-title">自分のレース分析（任意・50mごとのラップタイム）</div>
-        <div id="my-lap-rows-${escapeHtml(raceKey)}">${rowsHtml}</div>
-        <button type="button" class="my-lap-add" onclick="addMyLapRow('${raceKey}')">＋ ラップを追加</button>
-        <textarea id="my-memo-${escapeHtml(raceKey)}" placeholder="レースの振り返り（入り・ターン・ラストなど自由に）">${escapeHtml(memo)}</textarea>
-        <button type="button" class="my-save-btn" onclick="saveMyAnalysis('${raceKey}')">保存する</button>
-        <div class="my-save-status" id="my-save-status-${escapeHtml(raceKey)}">保存しました</div>
-      </div>
-    `;
-  }
-
-  function addMyLapRow(raceKey) {
-    const wrap = document.getElementById('my-lap-rows-' + raceKey);
-    const idx = wrap.children.length + 1;
-    const row = document.createElement('div');
-    row.className = 'my-lap-row';
-    row.innerHTML = `<span class="my-lap-idx">${idx}本目</span>
-      <input type="text" class="my-lap-input" data-key="${escapeHtml(raceKey)}" placeholder="例: 28.50" value="">
-      <button type="button" class="my-lap-del" onclick="removeMyLapRow('${raceKey}', this)"><i class="ti ti-x"></i></button>`;
-    wrap.appendChild(row);
-  }
-
-  function removeMyLapRow(raceKey, btn) {
-    const wrap = document.getElementById('my-lap-rows-' + raceKey);
-    if (wrap.children.length <= 1) {
-      btn.closest('.my-lap-row').querySelector('input').value = '';
-      return;
-    }
-    btn.closest('.my-lap-row').remove();
-    Array.from(wrap.children).forEach((row, i) => {
-      row.querySelector('.my-lap-idx').textContent = (i + 1) + '本目';
-    });
-  }
-
-  async function saveMyAnalysis(raceKey) {
-    const wrap = document.getElementById('my-lap-rows-' + raceKey);
-    const laps = Array.from(wrap.querySelectorAll('.my-lap-input')).map(inp => inp.value.trim());
-    const memo = document.getElementById('my-memo-' + raceKey).value;
-    const data = { laps: laps, memo: memo, updatedAt: Date.now() };
-    try {
-      await dbPut('raceNotes/' + encodeURIComponent(playerId) + '/' + raceKey, data);
-      raceNotes[raceKey] = data;
-      const statusEl = document.getElementById('my-save-status-' + raceKey);
-      statusEl.style.display = 'block';
-      setTimeout(() => { statusEl.style.display = 'none'; }, 2000);
-    } catch (e) {
-      alert('保存に失敗しました。通信環境を確認してもう一度お試しください。');
-    }
+  // 順位表示（コーチ側のデータはすでに「1位」のように「位」付きの場合と、数字のみの場合が混在するため統一する）
+  function formatRank(rank) {
+    const s = String(rank).trim();
+    if (!s) return '';
+    if (/^\d+$/.test(s)) return s + '位';
+    return s; // 「棄権」「OP」「失格」や、すでに「位」が付いているものはそのまま
   }
 
   function toggleRaceRow(raceKey) {
@@ -403,32 +406,66 @@
     openRaceKeys[raceKey] = isOpen;
   }
 
+  // ── 試合結果一覧の並び替え（日付順・タイム順を選べる。タイムが無い/読めない行は末尾に回す） ──
+  function sortRaces(list, mode) {
+    const arr = list.slice();
+    if (mode === 'date-asc') {
+      return arr.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    }
+    if (mode === 'time-asc' || mode === 'time-desc') {
+      return arr.sort((a, b) => {
+        const ta = timeToSec(a.time), tb = timeToSec(b.time);
+        if (ta == null && tb == null) return 0;
+        if (ta == null) return 1;
+        if (tb == null) return -1;
+        return mode === 'time-asc' ? ta - tb : tb - ta;
+      });
+    }
+    // 既定：日付（新しい順）
+    return arr.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  }
+
   function renderRaceList() {
     const listEl = document.getElementById('race-list');
     if (!races.length) {
       listEl.innerHTML = '<div class="empty-msg">まだ試合結果が登録されていません。コーチに確認してください。</div>';
       return;
     }
-    // 種目ごとの自己ベスト（秒）を先に計算しておく
-    const bestByEvent = {};
+    // 種目＋水路（長水路/短水路）ごとの自己ベスト（秒）を先に計算しておく（水路が違うとタイムは比較できないため。絞り込みの影響を受けないよう全件で計算する）
+    const bestByCombo = {};
     races.forEach(r => {
       const sec = timeToSec(r.time);
       if (sec == null || !r.event) return;
-      if (bestByEvent[r.event] == null || sec < bestByEvent[r.event]) bestByEvent[r.event] = sec;
+      const key = poolCombKey(r.event, r.pool);
+      if (bestByCombo[key] == null || sec < bestByCombo[key]) bestByCombo[key] = sec;
     });
 
-    const sorted = races.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    // 種目・水路での絞り込み
+    const filterSel = document.getElementById('race-filter-sel');
+    const filterKey = filterSel ? filterSel.value : '';
+    const filtered = filterKey
+      ? races.filter(r => poolCombKey(r.event, r.pool) === filterKey)
+      : races;
+
+    if (!filtered.length) {
+      listEl.innerHTML = '<div class="empty-msg">この種目・水路の記録はありません。</div>';
+      return;
+    }
+
+    const sortSel = document.getElementById('race-sort-sel');
+    const sorted = sortRaces(filtered, sortSel ? sortSel.value : 'date-desc');
     listEl.innerHTML = sorted.map(r => {
       const raceKey = raceKeyFor(r);
       const sec = timeToSec(r.time);
-      const isPB = sec != null && bestByEvent[r.event] != null && Math.abs(sec - bestByEvent[r.event]) < 0.005;
+      const comboKey = poolCombKey(r.event, r.pool);
+      const isPB = sec != null && bestByCombo[comboKey] != null && Math.abs(sec - bestByCombo[comboKey]) < 0.005;
       const dateLabel = (r.date || '').replace(/-/g, '/');
       const openCls = openRaceKeys[raceKey] ? ' open' : '';
       return `
         <div class="race-row${openCls}" id="race-row-${escapeHtml(raceKey)}">
           <div class="race-row-hdr" onclick="toggleRaceRow('${raceKey}')">
             <div class="race-row-main">
-              <div class="race-event">${escapeHtml(r.event || '種目不明')}${isPB ? '<span class="race-pb-badge">自己ベスト</span>' : ''}${r.rank ? '<span class="race-rank-badge">' + escapeHtml(r.rank) + '位</span>' : ''}</div>
+              <div class="race-event">${escapeHtml(r.event || '種目不明')}${isPB ? '<span class="race-pb-badge">自己ベスト' + (r.pool ? '・' + escapeHtml(r.pool) : '') + '</span>' : ''}${r.rank ? '<span class="race-rank-badge">' + escapeHtml(formatRank(r.rank)) + '</span>' : ''}</div>
               <div class="race-meta">${escapeHtml(dateLabel)}${r.meet ? '・' + escapeHtml(r.meet) : ''}${r.pool ? '（' + escapeHtml(r.pool) + '）' : ''}</div>
             </div>
             <div class="race-time">${escapeHtml(r.time || '—')}</div>
@@ -437,14 +474,13 @@
           <div class="race-row-body">
             ${r.note ? '<div class="race-note">' + escapeHtml(r.note) + '</div>' : ''}
             ${buildCoachLapHtml(r)}
-            ${buildMyAnalysisHtml(raceKey, raceNotes[raceKey])}
           </div>
         </div>
       `;
     }).join('');
   }
 
-  // ── 初期化：teamData/athletes から appLinkId 一致の選手を探し、試合結果と自己分析データを読み込む ──
+  // ── 初期化：teamData/athletes から appLinkId 一致の選手を探し、試合結果を読み込む ──
   async function init() {
     if (!playerId) {
       document.getElementById('player-name').textContent = '選手IDが指定されていません';
@@ -455,20 +491,18 @@
       const match = Object.values(allAthletes).find(a => a && a.appLinkId === playerId);
       if (!match) {
         document.getElementById('player-name').textContent = '選手データが見つかりません';
-        renderEventSelect(); renderGraph(); renderRaceList();
+        renderEventSelect(); renderRaceFilterSelect(); renderGraph(); renderRaceList();
         return;
       }
       athleteName = match.name || '選手';
       races = Array.isArray(match.races) ? match.races : [];
       document.getElementById('player-name').textContent = athleteName + ' さん';
-
-      const notes = await dbGet('raceNotes/' + encodeURIComponent(playerId)) || {};
-      raceNotes = notes || {};
     } catch (e) {
       document.getElementById('player-name').textContent = '読み込みエラー';
       console.error(e);
     }
     renderEventSelect();
+    renderRaceFilterSelect();
     renderGraph();
     renderRaceList();
   }
