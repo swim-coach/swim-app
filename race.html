@@ -36,8 +36,15 @@
     font-family:inherit;resize:vertical;min-height:56px;background:var(--bg);color:var(--ink)}
   textarea:focus{outline:none;border-color:var(--orange-bd)}
 
+  input[type=date]{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12.5px;font-family:inherit;background:var(--bg);color:var(--ink)}
+  input[type=date]:focus{outline:none;border-color:var(--orange-bd)}
+
   .finals-only-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink);margin-top:12px;cursor:pointer}
   .finals-only-row input{width:16px;height:16px;flex-shrink:0}
+
+  .date-range-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .date-range-sep{font-size:11px;color:var(--sub);flex-shrink:0}
+  .date-clear-btn{width:100%;padding:8px;border-radius:8px;border:1.5px dashed var(--line);background:transparent;font-size:11.5px;font-weight:600;color:var(--sub);cursor:pointer}
 
   .tabs{display:flex;gap:6px;margin-bottom:14px}
   .tab-btn{flex:1;padding:10px 4px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);
@@ -122,11 +129,21 @@
   <div class="pane show" id="pane-graph">
     <div class="card">
       <div class="card-label">種目を選択</div>
-      <select id="event-sel" onchange="renderGraph()"></select>
+      <select id="event-sel" onchange="onEventSelChange()"></select>
       <label class="finals-only-row">
         <input type="checkbox" id="finals-only-chk" onchange="renderGraph()">
         決勝のみで表示（タイム決勝を含む）
       </label>
+    </div>
+    <div class="card">
+      <div class="card-label">期間で絞り込み</div>
+      <select id="graph-year-sel" onchange="renderGraph()" style="margin-bottom:10px"></select>
+      <div class="date-range-row">
+        <input type="date" id="graph-date-from" onchange="renderGraph()">
+        <span class="date-range-sep">〜</span>
+        <input type="date" id="graph-date-to" onchange="renderGraph()">
+      </div>
+      <button type="button" class="date-clear-btn" onclick="clearGraphDateFilter()">期間指定をクリア</button>
     </div>
     <div class="graph-card">
       <div class="graph-title">タイムの推移<span class="card-sub">点をタップで詳細</span></div>
@@ -345,6 +362,39 @@
     sel.value = combos.some(c => c.key === prevValue) ? prevValue : '';
   }
 
+  // ── グラフの「年度で絞り込み」セレクター：選択中の種目・水路にある年度だけを選択肢にする ──
+  function renderGraphYearSelect() {
+    const sel = document.getElementById('event-sel');
+    const yearSel = document.getElementById('graph-year-sel');
+    if (!sel || !yearSel) return;
+    const key = sel.value;
+    let years = [];
+    if (key) {
+      const [ev, pool] = key.split('||');
+      const yearSet = {};
+      races.forEach(r => {
+        if (r.event === ev && (r.pool || '') === pool && r.date) yearSet[r.date.slice(0, 4)] = true;
+      });
+      years = Object.keys(yearSet).sort((a, b) => b.localeCompare(a));
+    }
+    const prevValue = yearSel.value;
+    yearSel.innerHTML = '<option value="">すべての年度</option>' +
+      years.map(y => `<option value="${escapeHtml(y)}">${escapeHtml(y)}年</option>`).join('');
+    yearSel.value = years.indexOf(prevValue) >= 0 ? prevValue : '';
+  }
+
+  function clearGraphDateFilter() {
+    document.getElementById('graph-date-from').value = '';
+    document.getElementById('graph-date-to').value = '';
+    document.getElementById('graph-year-sel').value = '';
+    renderGraph();
+  }
+
+  function onEventSelChange() {
+    renderGraphYearSelect();
+    renderGraph();
+  }
+
   let currentGraphRaces = []; // 現在表示中のグラフの各点に対応するレースデータ（points と同じ並び順・添字で対応）
 
   function renderGraph() {
@@ -353,6 +403,9 @@
     const hintEl = document.getElementById('pb-hint');
     const detailEl = document.getElementById('graph-point-detail');
     const finalsOnlyChk = document.getElementById('finals-only-chk');
+    const yearSel = document.getElementById('graph-year-sel');
+    const dateFrom = document.getElementById('graph-date-from').value;
+    const dateTo = document.getElementById('graph-date-to').value;
     detailEl.style.display = 'none';
     detailEl.innerHTML = '';
     const key = sel.value;
@@ -367,6 +420,11 @@
     if (finalsOnlyChk && finalsOnlyChk.checked) {
       evRaces = evRaces.filter(r => isFinalRound(r.note));
     }
+    if (yearSel && yearSel.value) {
+      evRaces = evRaces.filter(r => (r.date || '').slice(0, 4) === yearSel.value);
+    }
+    if (dateFrom) evRaces = evRaces.filter(r => (r.date || '') >= dateFrom);
+    if (dateTo) evRaces = evRaces.filter(r => (r.date || '') <= dateTo);
     evRaces = evRaces.slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     currentGraphRaces = evRaces;
     const points = evRaces.map(r => ({ date: r.date, value: timeToSec(r.time) }));
@@ -576,7 +634,7 @@
       const match = Object.values(allAthletes).find(a => a && a.appLinkId === playerId);
       if (!match) {
         document.getElementById('player-name').textContent = '選手データが見つかりません';
-        renderEventSelect(); renderRaceFilterSelect(); renderGraph(); renderRaceList();
+        renderEventSelect(); renderRaceFilterSelect(); renderGraphYearSelect(); renderGraph(); renderRaceList();
         return;
       }
       athleteName = match.name || '選手';
@@ -591,6 +649,7 @@
     }
     renderEventSelect();
     renderRaceFilterSelect();
+    renderGraphYearSelect();
     renderGraph();
     renderRaceList();
   }
