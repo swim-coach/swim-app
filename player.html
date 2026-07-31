@@ -340,6 +340,12 @@
   .cal-legend .cal-dot{width:7px;height:7px}
   #cal-day-detail{margin-top:12px}
   .cal-detail-title{font-size:12px;font-weight:700;color:var(--sub);margin-bottom:8px}
+  .cal-cell{position:relative}
+  .cal-menu-badge{position:absolute;top:2px;right:3px;font-size:7px;line-height:1}
+  .cal-menu-pdf-box{background:var(--card);border:1.5px solid #B9D7EE;border-radius:10px;padding:10px;margin-bottom:10px}
+  .cal-menu-pdf-title{font-size:11.5px;font-weight:700;color:var(--ink);margin-bottom:8px}
+  .cal-menu-pdf-frame{width:100%;height:420px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px;display:block}
+  .cal-menu-pdf-link{display:block;text-align:center;font-size:11.5px;font-weight:600;color:var(--blue);text-decoration:none;padding:8px;border:1.5px solid #B9D7EE;border-radius:8px}
 
   /* グラフ */
   .graph-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
@@ -2284,6 +2290,48 @@
     if (tab === 'strength') renderStrengthHistory();
   }
 
+  // ══ メニューPDF（Googleドライブ）：日付 → コーチが登録したPDF共有リンク ══
+  let menuPdfLinks = {};
+
+  async function loadMenuPdfLinks() {
+    if (!isConfigured) return;
+    try {
+      const data = await dbGet('teamData/menuPdfs');
+      menuPdfLinks = data || {};
+    } catch (e) {
+      menuPdfLinks = {};
+    }
+    renderCalendar(); // カレンダーに📄マークを反映
+  }
+
+  // GoogleドライブのURL（/file/d/ID/view や open?id=ID など）からファイルIDを取り出す
+  function driveFileIdFromUrl(url) {
+    if (!url) return '';
+    let m = String(url).match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (m) return m[1];
+    m = String(url).match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (m) return m[1];
+    return '';
+  }
+
+  function driveEmbedUrl(url) {
+    const id = driveFileIdFromUrl(url);
+    return id ? ('https://drive.google.com/file/d/' + id + '/preview') : '';
+  }
+
+  function buildMenuPdfHtml(dateStr) {
+    const url = menuPdfLinks[dateStr];
+    if (!url) return '';
+    const embedUrl = driveEmbedUrl(url);
+    return `
+      <div class="cal-menu-pdf-box">
+        <div class="cal-menu-pdf-title">📄 この日の練習メニュー</div>
+        ${embedUrl ? `<iframe src="${embedUrl}" class="cal-menu-pdf-frame" allow="autoplay"></iframe>` : ''}
+        <a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="cal-menu-pdf-link">Googleドライブで開く</a>
+      </div>
+    `;
+  }
+
   // ══ カレンダー表示 ══
   const todayObj = new Date();
   let calYear = todayObj.getFullYear();
@@ -2332,20 +2380,28 @@
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = calYear + '-' + String(calMonth + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
       const dayEntries = entriesByDate[dateStr] || [];
+      const hasMenuPdf = !!menuPdfLinks[dateStr];
       const isFuture = dateStr > todayStr;
       const cell = document.createElement('div');
       cell.className = 'cal-cell';
       if (dateStr === todayStr) cell.classList.add('cal-cell-today');
       const dotsHtml = dayEntries.slice(0, 3).map(e => `<span class="cal-dot" style="background:${sessionDotColor(e.entry)}"></span>`).join('');
-      cell.innerHTML = `<span class="cal-daynum">${day}</span><span class="cal-dots">${dotsHtml}</span>`;
+      const menuBadgeHtml = hasMenuPdf ? '<span class="cal-menu-badge">📄</span>' : '';
+      cell.innerHTML = `<span class="cal-daynum">${day}</span><span class="cal-dots">${dotsHtml}</span>${menuBadgeHtml}`;
       if (dayEntries.length) cell.classList.add('cal-cell-has-entry');
       if (isFuture) {
-        cell.style.opacity = '0.35';
-        cell.style.cursor = 'default';
-      } else if (dayEntries.length) {
+        if (hasMenuPdf) {
+          // 未来の日でも、メニューPDFが登録されていれば内容だけ確認できるようにする
+          cell.style.cursor = 'pointer';
+          cell.addEventListener('click', () => showCalDayDetail(dateStr, []));
+        } else {
+          cell.style.opacity = '0.35';
+          cell.style.cursor = 'default';
+        }
+      } else if (dayEntries.length || hasMenuPdf) {
         cell.addEventListener('click', () => showCalDayDetail(dateStr, dayEntries));
       } else {
-        // 記録のない日：タップするとその日付で新規入力を開始する
+        // 記録もメニューも無い日：タップするとその日付で新規入力を開始する
         cell.addEventListener('click', () => setSelectedDate(dateStr));
       }
       grid.appendChild(cell);
@@ -2364,15 +2420,26 @@
     title.className = 'cal-detail-title';
     title.textContent = d + ' の記録';
     wrap.appendChild(title);
+
+    const menuHtml = buildMenuPdfHtml(dateStr);
+    if (menuHtml) {
+      const menuWrap = document.createElement('div');
+      menuWrap.innerHTML = menuHtml;
+      wrap.appendChild(menuWrap);
+    }
+
     dayEntries.forEach(({ key, entry }) => {
       wrap.appendChild(buildHistRowEl(key, entry, d));
     });
-    const addBtn = document.createElement('button');
-    addBtn.type = 'button';
-    addBtn.className = 'cal-add-entry-btn';
-    addBtn.textContent = '＋ この日の記録を追加する';
-    addBtn.onclick = () => setSelectedDate(dateStr);
-    wrap.appendChild(addBtn);
+
+    if (dateStr <= todayStr) {
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'cal-add-entry-btn';
+      addBtn.textContent = '＋ この日の記録を追加する';
+      addBtn.onclick = () => setSelectedDate(dateStr);
+      wrap.appendChild(addBtn);
+    }
   }
 
   // ══ グラフ表示（体重・疲労度・睡眠時間・RPEの推移） ══
@@ -2911,6 +2978,7 @@
   painRenderPointMarkers();
   painRenderList();
   loadHistory();
+  loadMenuPdfLinks();
   // フォント読込完了後に判定（即時だとcontentが取得できないことがあるため少し待つ）
   if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(function(){ setTimeout(checkAndFallbackIcons, 50); });
