@@ -2412,6 +2412,20 @@ body { font-family: var(--font-sans); background: #111; display: flex; align-ite
         </div>
       </div>
 
+      <!-- ▼ メニューPDFリンク管理（Googleドライブ） -->
+      <div class="analytics-section" style="border:1.5px solid #185FA5;border-radius:var(--border-radius-lg);padding:14px">
+        <div class="analytics-section-title" style="color:#185FA5"><i class="ti ti-file-type-pdf" style="color:#185FA5"></i>メニューPDFリンク管理（Googleドライブ）</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);line-height:1.7;margin-bottom:10px">
+          練習メニューのPDFをGoogleドライブにアップロードし、「リンクを知っている全員が閲覧可能」に共有設定した上で、そのリンクを日付ごとに登録してください。player.htmlのカレンダーでその日をタップすると選手が見られるようになります。
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <input type="date" id="menu-pdf-date-input" style="flex:1;min-width:130px;padding:8px 10px;font-size:12px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary)">
+          <input type="text" id="menu-pdf-url-input" placeholder="GoogleドライブのURLを貼り付け" style="flex:2;min-width:200px;padding:8px 10px;font-size:12px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary)">
+          <button onclick="addMenuPdfLink()" style="padding:8px 16px;background:#185FA5;color:#fff;border:none;border-radius:var(--border-radius-md);font-size:12px;font-weight:700;cursor:pointer">登録</button>
+        </div>
+        <div id="menu-pdf-list"></div>
+      </div>
+
       <!-- 入力フォーム（基本は選手アプリからの自動同期を使うため、普段は非表示。スマホが使えない選手用の手入力として残してある） -->
       <div class="analytics-section" id="cond-manual-form-section" style="display:none">
         <div class="analytics-section-title"><i class="ti ti-plus" style="color:#D4537E"></i>今日の記録（手入力）</div>
@@ -6968,6 +6982,7 @@ function txtReset() {
 
 
 const LS_KEY_ATHLETES = 'swimcoach_athletes';
+const LS_KEY_MENU_PDF_LINKS = 'swimcoach_menu_pdf_links';
 const LS_KEY_MEET_INFO = 'swimcoach_meetInfo'; // 大会情報マスター
 
 // 大会情報マスター: { "大会名": { venue:"開催場所", date:"開催日", pool:"コース" } }
@@ -6998,6 +7013,62 @@ function athLoad() {
 }
 function athSave() {
   try { localStorage.setItem(LS_KEY_ATHLETES, JSON.stringify(athletes)); } catch(e) {}
+}
+
+// ══ メニューPDFリンク管理（Googleドライブ） ══
+// 日付（YYYY-MM-DD）→ GoogleドライブのPDF共有リンク、の単純なマップ。player.htmlのカレンダーに表示される。
+var menuPdfLinks = {};
+
+function menuPdfLinksLoad() {
+  try {
+    var raw = localStorage.getItem(LS_KEY_MENU_PDF_LINKS);
+    if (raw) menuPdfLinks = JSON.parse(raw) || {};
+  } catch(e) { console.warn('メニューPDFリンク読込エラー:', e); }
+}
+function menuPdfLinksSave() {
+  try { localStorage.setItem(LS_KEY_MENU_PDF_LINKS, JSON.stringify(menuPdfLinks)); } catch(e) {}
+}
+
+function addMenuPdfLink() {
+  var dateInp = document.getElementById('menu-pdf-date-input');
+  var urlInp  = document.getElementById('menu-pdf-url-input');
+  var date = dateInp ? dateInp.value : '';
+  var url  = urlInp  ? urlInp.value.trim() : '';
+  if (!date) { if (typeof showN === 'function') showN('warn', '日付を選択してください'); return; }
+  if (!url || url.indexOf('drive.google.com') < 0) {
+    if (typeof showN === 'function') showN('warn', 'GoogleドライブのURLを入力してください');
+    return;
+  }
+  menuPdfLinks[date] = url;
+  menuPdfLinksSave();
+  if (urlInp) urlInp.value = '';
+  renderMenuPdfLinksList();
+  if (typeof showN === 'function') showN('notice', 'メニューPDFリンクを登録しました ✓（「今すぐ共有」を押すと選手に反映されます）');
+}
+
+function removeMenuPdfLink(date) {
+  if (!confirm(date + ' のメニューPDFリンクを削除しますか？')) return;
+  delete menuPdfLinks[date];
+  menuPdfLinksSave();
+  renderMenuPdfLinksList();
+}
+
+function renderMenuPdfLinksList() {
+  var listEl = document.getElementById('menu-pdf-list');
+  if (!listEl) return;
+  var dates = Object.keys(menuPdfLinks).sort().reverse();
+  if (!dates.length) {
+    listEl.innerHTML = '<div style="font-size:11px;color:var(--color-text-tertiary);padding:6px 2px">登録されているメニューPDFはまだありません</div>';
+    return;
+  }
+  listEl.innerHTML = dates.map(function(d) {
+    var url = menuPdfLinks[d];
+    return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:11.5px">' +
+      '<span style="font-weight:700;flex-shrink:0">' + escH(d) + '</span>' +
+      '<a href="' + escH(url) + '" target="_blank" rel="noopener" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#185FA5">' + escH(url) + '</a>' +
+      '<button onclick="removeMenuPdfLink(\'' + d + '\')" style="flex-shrink:0;border:none;background:none;color:#A32D2D;cursor:pointer;font-size:11px">削除</button>' +
+      '</div>';
+  }).join('');
 }
 
 // 入学年度の新しい順（同年度は氏名順）でソートする共通ヘルパー
@@ -10267,7 +10338,7 @@ function lapBuildHtml(r, uid) {
 buildBlockRow();buildPoolRow();buildZoneGrid();buildStrokeGrid();buildOptGrid();buildPalette();buildDryPresetGrid();onChg();renderCal();updateDtSummary();updateStats();
 // localStorageからデータを読み込む
 lsLoad();
-athLoad(); meetInfoLoad();
+athLoad(); meetInfoLoad(); menuPdfLinksLoad(); renderMenuPdfLinksList();
 // 有効期間のオーバーライドをlocalStorageから読み込む
 try {
   var _vfSaved = JSON.parse(localStorage.getItem('swimcoach_std_validfrom') || '{}');
@@ -15758,6 +15829,7 @@ async function syncTeamDataToFirebase() {
       fetch(base + '/teamData/menus.json',     { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(menuPayload) }),
       fetch(base + '/teamData/weekPlan.json',  { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(weekPayload) }),
       fetch(base + '/teamData/stdRecords.json',{ method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(stdPayload) }),
+      fetch(base + '/teamData/menuPdfs.json',  { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(menuPdfLinks || {}) }),
     ];
     var results = await Promise.all(writes);
     var hasError = results.some(function(r){ return !r.ok; });
