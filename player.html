@@ -347,6 +347,14 @@
   .cal-menu-pdf-frame{width:100%;height:420px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px;display:block}
   .cal-menu-pdf-link{display:block;text-align:center;font-size:11.5px;font-weight:600;color:var(--blue);text-decoration:none;padding:8px;border:1.5px solid #B9D7EE;border-radius:8px}
 
+  .reflection-video-label{margin-top:10px;font-size:11px}
+  .reflection-video-input{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;
+    font-size:12.5px;font-family:inherit;background:var(--bg);color:var(--ink);box-sizing:border-box;margin-top:4px}
+  .reflection-video-input:focus{outline:none;border-color:var(--orange-bd)}
+  .video-embed-frame{width:100%;aspect-ratio:16/9;border:1px solid var(--line);border-radius:8px;margin-top:8px;display:block}
+  .video-link-hint{font-size:11px;color:var(--sub);margin-top:8px;padding:8px;border:1.5px dashed var(--line);border-radius:8px;text-align:center}
+  .video-link-hint a{color:var(--blue)}
+
   /* グラフ */
   .graph-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
   .graph-title{font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:6px;display:flex;align-items:center;gap:6px}
@@ -492,6 +500,9 @@
       <div class="rpe-widget" id="rpe-widget-am"></div>
       <div class="card-label" style="margin-top:16px;font-size:12.5px">振り返りメモ<span class="card-sub">任意</span></div>
       <textarea id="reflection-am" placeholder="今日の練習の振り返りを自由に書いてください" oninput="updateReflection('am', this.value)"></textarea>
+      <div class="card-label reflection-video-label">動画のリンク<span class="card-sub">任意</span></div>
+      <input type="text" id="video-am" class="reflection-video-input" placeholder="GoogleドライブやYouTubeの共有リンクを貼り付け" oninput="updateVideoUrl('am', this.value)">
+      <div id="video-embed-am"></div>
     </div>
 
     <!-- グループ選択（午後練習） -->
@@ -502,6 +513,9 @@
       <div class="rpe-widget" id="rpe-widget-pm"></div>
       <div class="card-label" style="margin-top:16px;font-size:12.5px">振り返りメモ<span class="card-sub">任意</span></div>
       <textarea id="reflection-pm" placeholder="今日の練習の振り返りを自由に書いてください" oninput="updateReflection('pm', this.value)"></textarea>
+      <div class="card-label reflection-video-label">動画のリンク<span class="card-sub">任意</span></div>
+      <input type="text" id="video-pm" class="reflection-video-input" placeholder="GoogleドライブやYouTubeの共有リンクを貼り付け" oninput="updateVideoUrl('pm', this.value)">
+      <div id="video-embed-pm"></div>
     </div>
 
     <!-- 自主練習：実施時間（30分刻み） -->
@@ -519,6 +533,9 @@
       <div class="rpe-widget" id="rpe-widget-jishu"></div>
       <div class="card-label" style="margin-top:16px;font-size:12.5px">振り返りメモ<span class="card-sub">任意</span></div>
       <textarea id="reflection-jishu" placeholder="今日の練習の振り返りを自由に書いてください" oninput="updateReflection('jishu', this.value)"></textarea>
+      <div class="card-label reflection-video-label">動画のリンク<span class="card-sub">任意</span></div>
+      <input type="text" id="video-jishu" class="reflection-video-input" placeholder="GoogleドライブやYouTubeの共有リンクを貼り付け" oninput="updateVideoUrl('jishu', this.value)">
+      <div id="video-embed-jishu"></div>
     </div>
 
     <!-- 陸上トレーニング：種別選択 -->
@@ -541,6 +558,9 @@
       <div class="rpe-widget" id="rpe-widget-land"></div>
       <div class="card-label" style="margin-top:16px;font-size:12.5px">振り返りメモ<span class="card-sub">任意</span></div>
       <textarea id="reflection-land" placeholder="今日の練習の振り返りを自由に書いてください" oninput="updateReflection('land', this.value)"></textarea>
+      <div class="card-label reflection-video-label">動画のリンク<span class="card-sub">任意</span></div>
+      <input type="text" id="video-land" class="reflection-video-input" placeholder="GoogleドライブやYouTubeの共有リンクを貼り付け" oninput="updateVideoUrl('land', this.value)">
+      <div id="video-embed-land"></div>
     </div>
 
     <!-- 体重（測定有無のチェック付き。基本は起床時、それ以外の時間も指定できる） -->
@@ -1924,6 +1944,40 @@
     state[REFLECTION_SCOPE_FIELD[scope]] = val;
   }
 
+  // ── 振り返りメモに紐づく動画リンク（Googleドライブ／YouTube） ──
+  const VIDEO_SCOPE_FIELD = { am: 'amVideoUrl', pm: 'pmVideoUrl', jishu: 'jishuVideoUrl', land: 'landVideoUrl' };
+  function driveFileIdFromUrl(url) {
+    if (!url) return '';
+    let m = String(url).match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (m) return m[1];
+    m = String(url).match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (m) return m[1];
+    return '';
+  }
+  function youtubeIdFromUrl(url) {
+    if (!url) return '';
+    let m = String(url).match(/youtu\.be\/([a-zA-Z0-9_-]{6,})/);
+    if (m) return m[1];
+    m = String(url).match(/[?&]v=([a-zA-Z0-9_-]{6,})/);
+    if (m) return m[1];
+    m = String(url).match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{6,})/);
+    if (m) return m[1];
+    return '';
+  }
+  function buildVideoEmbedHtml(url) {
+    if (!url) return '';
+    const driveId = driveFileIdFromUrl(url);
+    if (driveId) return `<iframe src="https://drive.google.com/file/d/${driveId}/preview" class="video-embed-frame" allow="autoplay"></iframe>`;
+    const ytId = youtubeIdFromUrl(url);
+    if (ytId) return `<iframe src="https://www.youtube.com/embed/${ytId}" class="video-embed-frame" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+    return `<div class="video-link-hint">このリンクは埋め込み表示に対応していません。<a href="${escapeHtml(url)}" target="_blank" rel="noopener">開いて確認する</a></div>`;
+  }
+  function updateVideoUrl(scope, val) {
+    state[VIDEO_SCOPE_FIELD[scope]] = val;
+    const embedEl = document.getElementById('video-embed-' + scope);
+    if (embedEl) embedEl.innerHTML = buildVideoEmbedHtml(val.trim());
+  }
+
   // ── フォームへ既存データを反映（編集時に使用） ──
   function applyEntryToForm(entry) {
     const sess = entry.session || (entry.attend === false ? 'NONE' : null);
@@ -1948,6 +2002,10 @@
       pmReflection: sess === 'PM' ? (entry.reflection || '') : '',
       jishuReflection: sess === 'JISHU' ? (entry.reflection || '') : '',
       landReflection: sess === 'LAND' ? (entry.reflection || '') : '',
+      amVideoUrl: sess === 'AM' ? (entry.videoUrl || '') : '',
+      pmVideoUrl: sess === 'PM' ? (entry.videoUrl || '') : '',
+      jishuVideoUrl: sess === 'JISHU' ? (entry.videoUrl || '') : '',
+      landVideoUrl: sess === 'LAND' ? (entry.videoUrl || '') : '',
       fatigue: entry.fatigue != null ? entry.fatigue : null,
       sleep: entry.sleep != null ? entry.sleep : 7.0,
       nutrition: entry.nutrition != null ? entry.nutrition : 5,
@@ -1977,6 +2035,11 @@
       highlightRpeZone(scope, val);
       const reflectionEl = document.getElementById('reflection-' + scope);
       if (reflectionEl) reflectionEl.value = state[REFLECTION_SCOPE_FIELD[scope]] || '';
+      const videoUrlVal = state[VIDEO_SCOPE_FIELD[scope]] || '';
+      const videoEl = document.getElementById('video-' + scope);
+      if (videoEl) videoEl.value = videoUrlVal;
+      const videoEmbedEl = document.getElementById('video-embed-' + scope);
+      if (videoEmbedEl) videoEmbedEl.innerHTML = buildVideoEmbedHtml(videoUrlVal);
     });
     // 過去の記録の種別が、現在の種別一覧から削除済みの場合は一覧に復元してから表示する
     let landGridNeedsRefresh = false;
@@ -2014,6 +2077,7 @@
               weightMeasured: true, weightTime: 'wake', wakeWeight: null,
               amRpe: 5, pmRpe: 5, jishuRpe: 5, landRpe: 5,
               amReflection: '', pmReflection: '', jishuReflection: '', landReflection: '',
+              amVideoUrl: '', pmVideoUrl: '', jishuVideoUrl: '', landVideoUrl: '',
               fatigue: null, sleep: 7.0, nutrition: 5, memo: '' };
     strengthLog = [];
     painMapData = [];
@@ -2035,6 +2099,10 @@
     ['am','pm','jishu','land'].forEach(scope => {
       const el = document.getElementById('reflection-' + scope);
       if (el) el.value = '';
+      const videoEl = document.getElementById('video-' + scope);
+      if (videoEl) videoEl.value = '';
+      const videoEmbedEl = document.getElementById('video-embed-' + scope);
+      if (videoEmbedEl) videoEmbedEl.innerHTML = '';
     });
     prefillWeightsFromLast();
     refreshDependentUI();
@@ -2105,12 +2173,14 @@
     if (state.amOn) {
       entries.push(Object.assign(buildEntryBase(entryDate), {
         session: 'AM', attend: true, group: state.amGroup || null, rpe: state.amRpe, reflection: state.amReflection || '',
+        videoUrl: state.amVideoUrl || '',
         duration: null, landTypes: null, landType: null, landMenu: '', strengthLog: null
       }));
     }
     if (state.pmOn) {
       entries.push(Object.assign(buildEntryBase(entryDate), {
         session: 'PM', attend: true, group: state.pmGroup || null, rpe: state.pmRpe, reflection: state.pmReflection || '',
+        videoUrl: state.pmVideoUrl || '',
         duration: null, landTypes: null, landType: null, landMenu: '', strengthLog: null
       }));
     }
@@ -2120,6 +2190,7 @@
       base.nutrition = s !== 'NONE' ? state.nutrition : null;
       base.rpe = s === 'JISHU' ? state.jishuRpe : (s === 'LAND' ? state.landRpe : null);
       base.reflection = s === 'JISHU' ? (state.jishuReflection || '') : (s === 'LAND' ? (state.landReflection || '') : '');
+      base.videoUrl = s === 'JISHU' ? (state.jishuVideoUrl || '') : (s === 'LAND' ? (state.landVideoUrl || '') : '');
       entries.push(Object.assign(base, {
         session: s, attend: s !== 'NONE', group: null,
         duration: s === 'JISHU' ? state.duration : null,
