@@ -2140,6 +2140,17 @@ body { font-family: var(--font-sans); background: #111; display: flex; align-ite
                 <option value="">すべて</option>
               </select>
             </div>
+            <div class="ath-field">
+              <label>学種</label>
+              <select id="rpt-rank-schooltype" onchange="rptRenderRank()" style="font-size:12px;padding:6px 9px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);outline:none">
+                <option value="">すべて</option>
+                <option value="elementary">小学生</option>
+                <option value="junior">中学生</option>
+                <option value="high">高校生</option>
+                <option value="university">大学生</option>
+                <option value="other">その他</option>
+              </select>
+            </div>
           </div>
           <div class="rpt-filter-row" style="margin-top:8px;align-items:flex-end">
             <div class="ath-field">
@@ -2156,6 +2167,14 @@ body { font-family: var(--font-sans); background: #111; display: flex; align-ite
                 <span style="font-size:11px;color:var(--color-text-tertiary)">〜</span>
                 <input type="date" id="rpt-rank-date-to" onchange="rptRenderRank()" style="font-size:12px;padding:6px 9px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary)">
               </div>
+            </div>
+            <div class="ath-field">
+              <label>表示件数</label>
+              <select id="rpt-rank-limit" onchange="rptRenderRank()" style="font-size:12px;padding:6px 9px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);outline:none">
+                <option value="10">ベスト10</option>
+                <option value="20">ベスト20</option>
+                <option value="all" selected>すべて</option>
+              </select>
             </div>
           </div>
         </div>
@@ -7634,7 +7653,7 @@ function renderAthDetail() {
         '<div class="ath-field"><label>生年月日</label><input type="date" value="'+escH(a.dob)+'" oninput="athFieldRedraw('+a.id+',\'dob\',this.value)"></div>'+
         '<div class="ath-field"><label>性別</label><select oninput="athField('+a.id+',\'gender\',this.value)"><option value=""'+(a.gender?'':' selected')+'>---</option><option value="男"'+(a.gender==='男'?' selected':'')+'>男</option><option value="女"'+(a.gender==='女'?' selected':'')+'>女</option></select></div>'+
         '<div class="ath-field"><label>ブロック / グループ</label><select oninput="athField('+a.id+',\'group\',this.value)"><option value="">---</option>'+groupOpts+'</select></div>'+
-        '<div class="ath-field"><label>学校区分</label><select oninput="athFieldRedraw('+a.id+',\'schoolType\',this.value)">'+
+        '<div class="ath-field"><label>学種</label><select oninput="athFieldRedraw('+a.id+',\'schoolType\',this.value)">'+
           '<option value="university"'+((!a.schoolType||a.schoolType==='university')?' selected':'')+'>大学生</option>'+
           '<option value="high"'+(a.schoolType==='high'?' selected':'')+'>高校生</option>'+
           '<option value="junior"'+(a.schoolType==='junior'?' selected':'')+'>中学生</option>'+
@@ -7646,7 +7665,7 @@ function renderAthDetail() {
           '<div class="ath-field"><label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" '+(a.graduated?'checked':'')+' onchange="athFieldRedraw('+a.id+',\'graduated\',this.checked)" style="width:auto"> 卒業済み</label>'+
             '<span style="font-size:11px;color:var(--color-text-secondary);margin-top:4px">未チェックの場合、5年目以降は5年・6年と表示され続けます</span></div>'
         : '<div class="ath-field"></div><div class="ath-field"></div>')+
-        '<div class="ath-field" style="display:flex;align-items:flex-end;padding-bottom:2px"><span style="font-size:11px;color:var(--color-text-secondary)">学校区分: <strong>'+schoolTypeLabel(a)+'</strong>　現在の学年: <strong>'+gradeLabel(a)+'</strong></span></div>'+
+        '<div class="ath-field" style="display:flex;align-items:flex-end;padding-bottom:2px"><span style="font-size:11px;color:var(--color-text-secondary)">学種: <strong>'+schoolTypeLabel(a)+'</strong>　現在の学年: <strong>'+gradeLabel(a)+'</strong></span></div>'+
         '<div class="ath-field full"><label>メモ・特記事項</label><textarea rows="2" placeholder="怪我の状態、目標、コーチメモなど..." oninput="athField('+a.id+',\'notes\',this.value)" style="resize:vertical">'+escH(a.notes)+'</textarea></div>'+
       '</div>'+
     '</div>'+
@@ -8339,7 +8358,7 @@ function athField(id, key, val) {
   a[key] = val; athSave();
   renderAthList();
 }
-// 学校区分・生年月日・卒業チェックなど、学年表示に影響するフィールド変更時は詳細を再描画
+// 学種・生年月日・卒業チェックなど、学年表示に影響するフィールド変更時は詳細を再描画
 function athFieldRedraw(id, key, val) {
   const a = athletes.find(x=>x.id===id); if(!a)return;
   a[key] = val; athSave();
@@ -9454,13 +9473,15 @@ function rptRankTogglePeriod() {
 
 function rptRankGetFilters() {
   return {
-    event:  (document.getElementById('rpt-rank-event')  && document.getElementById('rpt-rank-event').value)  || '',
-    pool:   (document.getElementById('rpt-rank-pool')   && document.getElementById('rpt-rank-pool').value)   || '長水路',
-    gender: (document.getElementById('rpt-rank-gender') && document.getElementById('rpt-rank-gender').value) || '',
-    group:  (document.getElementById('rpt-rank-group')  && document.getElementById('rpt-rank-group').value)  || '',
-    period: (document.getElementById('rpt-rank-period') && document.getElementById('rpt-rank-period').value) || 'all',
+    event:      (document.getElementById('rpt-rank-event')      && document.getElementById('rpt-rank-event').value)      || '',
+    pool:       (document.getElementById('rpt-rank-pool')       && document.getElementById('rpt-rank-pool').value)       || '長水路',
+    gender:     (document.getElementById('rpt-rank-gender')     && document.getElementById('rpt-rank-gender').value)     || '',
+    group:      (document.getElementById('rpt-rank-group')      && document.getElementById('rpt-rank-group').value)      || '',
+    schoolType: (document.getElementById('rpt-rank-schooltype') && document.getElementById('rpt-rank-schooltype').value) || '',
+    period:     (document.getElementById('rpt-rank-period')     && document.getElementById('rpt-rank-period').value)     || 'all',
     dateFrom: (document.getElementById('rpt-rank-date-from') && document.getElementById('rpt-rank-date-from').value) || '',
-    dateTo:   (document.getElementById('rpt-rank-date-to')   && document.getElementById('rpt-rank-date-to').value)   || ''
+    dateTo:   (document.getElementById('rpt-rank-date-to')   && document.getElementById('rpt-rank-date-to').value)   || '',
+    limit:    (document.getElementById('rpt-rank-limit')     && document.getElementById('rpt-rank-limit').value)     || 'all'
   };
 }
 
@@ -9470,6 +9491,10 @@ function rptRankBuildList(f) {
   athletes.forEach(function(a) {
     if (f.gender && a.gender !== f.gender) return;
     if (f.group  && a.group  !== f.group)  return;
+    if (f.schoolType) {
+      var stKey = a.schoolType || (a.enrollYear ? 'university' : 'other');
+      if (stKey !== f.schoolType) return;
+    }
     var best = null;
     (a.races || []).forEach(function(r) {
       if (r.event !== f.event) return;
@@ -9493,14 +9518,21 @@ function rptRankPeriodLabel(f) {
   return f.period === 'range' ? ((f.dateFrom||'指定なし')+' 〜 '+(f.dateTo||'指定なし')) : '全ての期間';
 }
 
+function rptRankApplyLimit(list, f) {
+  if (!f.limit || f.limit === 'all') return list;
+  var n = parseInt(f.limit, 10);
+  return isFinite(n) && n > 0 ? list.slice(0, n) : list;
+}
+
 function rptRenderRank() {
   var f = rptRankGetFilters();
   var prev = document.getElementById('rpt-rank-preview');
   if (!prev) return;
   if (!f.event) { prev.innerHTML = '<div class="rpt-empty">種目を選択してください</div>'; return; }
 
-  var list = rptRankBuildList(f);
-  if (!list.length) { prev.innerHTML = '<div class="rpt-empty">該当する記録がありません</div>'; return; }
+  var fullList = rptRankBuildList(f);
+  if (!fullList.length) { prev.innerHTML = '<div class="rpt-empty">該当する記録がありません</div>'; return; }
+  var list = rptRankApplyLimit(fullList, f);
 
   var medal = ['🥇','🥈','🥉'];
   var rows = list.map(function(item, i) {
@@ -9518,11 +9550,15 @@ function rptRenderRank() {
     '</tr>';
   }).join('');
 
+  var countLabel = list.length < fullList.length
+    ? (list.length+'人を表示（該当'+fullList.length+'人中）')
+    : (fullList.length+'人');
+  var stLabelMap = {elementary:'小学生',junior:'中学生',high:'高校生',university:'大学生',other:'その他'};
   prev.innerHTML =
     '<div style="padding:8px 14px;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px;font-weight:500">'+
-      escH(f.event)+'　'+escH(f.pool)+'　'+(f.gender?escH(f.gender)+'子':'全選手')+(f.group?' ['+escH(f.group)+']':'')+
+      escH(f.event)+'　'+escH(f.pool)+'　'+(f.gender?escH(f.gender)+'子':'全選手')+(f.group?' ['+escH(f.group)+']':'')+(f.schoolType?' ['+escH(stLabelMap[f.schoolType]||f.schoolType)+']':'')+
       '<span style="font-size:10px;color:var(--color-text-tertiary);margin-left:8px">'+escH(rptRankPeriodLabel(f))+'</span>'+
-      '<span style="font-size:10px;color:var(--color-text-tertiary);margin-left:8px">'+list.length+'人</span>'+
+      '<span style="font-size:10px;color:var(--color-text-tertiary);margin-left:8px">'+escH(countLabel)+'</span>'+
       '<span style="font-size:9px;color:#5B21B6;margin-left:8px"><i class="ti ti-brand-worldaquatics" style="font-size:9px"></i> () = WAポイント</span>'+
     '</div>'+
     '<div style="overflow-x:auto"><table class="rpt-table"><thead><tr>'+
@@ -9876,8 +9912,10 @@ function rptPrint() {
   } else if (rptTab === 'rank') {
     var fR = rptRankGetFilters();
     if (!fR.event) { alert('種目を選択してください'); return; }
-    var listR = rptRankBuildList(fR);
-    printHtml += '<div style="font-size:14pt;font-weight:700;color:#000;margin:0 0 4px">ランキング（'+escH(fR.event)+'　'+escH(fR.pool)+(fR.gender?'　'+escH(fR.gender)+'子':'')+'）</div>';
+    var fullListR = rptRankBuildList(fR);
+    var listR = rptRankApplyLimit(fullListR, fR);
+    var stLabelMapR = {elementary:'小学生',junior:'中学生',high:'高校生',university:'大学生',other:'その他'};
+    printHtml += '<div style="font-size:14pt;font-weight:700;color:#000;margin:0 0 4px">ランキング（'+escH(fR.event)+'　'+escH(fR.pool)+(fR.gender?'　'+escH(fR.gender)+'子':'')+(fR.schoolType?'　'+escH(stLabelMapR[fR.schoolType]||fR.schoolType):'')+(listR.length<fullListR.length?'　上位'+listR.length+'人':'')+'）</div>';
     if (club) printHtml += '<div style="font-size:9pt;color:#444;margin-bottom:2px">🏫 '+escH(club)+'</div>';
     printHtml += '<div style="font-size:9pt;color:#444;margin-bottom:2px">📅 集計期間: '+escH(rptRankPeriodLabel(fR))+'</div>';
     printHtml += '<div style="font-size:8pt;color:#666;margin-bottom:4px">印刷日: '+escH(now)+'</div>';
@@ -11574,7 +11612,7 @@ function athCsvImportOpen() {
 
 function athDownloadCsvTemplate() {
   var rows = [
-    '氏名,性別,学校区分,入学年度,卒業済み,グループ,生年月日,メモ',
+    '氏名,性別,学種,入学年度,卒業済み,グループ,生年月日,メモ',
     '山田 太郎,男,大学生,2023,,Aグループ,2005-04-15,',
     '鈴木 花子,女,大学生,2022,,Bグループ,2004-09-20,主将',
     '田中 一朗,男,高校生,,,Cグループ,2009-06-10,',
@@ -11605,7 +11643,7 @@ function athCsvImport(inp) {
     var header = lines[0].split(',').map(function(h){ return h.trim(); });
     var idxName = header.indexOf('氏名');
     var idxGender = header.indexOf('性別');
-    var idxSchoolType = header.indexOf('学校区分');
+    var idxSchoolType = header.indexOf('学種') >= 0 ? header.indexOf('学種') : header.indexOf('学校区分');
     var idxEnroll = header.indexOf('入学年度');
     var idxGraduated = header.indexOf('卒業済み');
     var idxGroup = header.indexOf('グループ');
