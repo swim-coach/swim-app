@@ -7938,13 +7938,14 @@ function runDeduplicateAthletes() {
 
 var SORT_KEYS = {
   ath: [
-    { val:'default', label:'登録順' },
-    { val:'name',    label:'氏名' },
-    { val:'kana',    label:'ふりがな' },
-    { val:'dob',     label:'生年月日' },
-    { val:'gender',  label:'性別' },
-    { val:'group',   label:'グループ' },
-    { val:'grade',   label:'学年' },
+    { val:'default',    label:'登録順' },
+    { val:'name',       label:'氏名' },
+    { val:'kana',       label:'ふりがな' },
+    { val:'dob',        label:'生年月日' },
+    { val:'enrollYear', label:'入学年度' },
+    { val:'gender',     label:'性別' },
+    { val:'group',      label:'グループ' },
+    { val:'grade',      label:'学年' },
     
   ],
   meet: [
@@ -8023,6 +8024,7 @@ function multiSortApply(arr, ctx, accessor) {
       var cmp = 0;
       if (s.key === 'time')                  cmp = timeToSec(av) - timeToSec(bv);
       else if (s.key === 'rank')             cmp = (parseInt(av)||999) - (parseInt(bv)||999);
+      else if (s.key === 'enrollYear')       cmp = (parseInt(av)||9999) - (parseInt(bv)||9999);
       else if (s.key === 'dob' || s.key === 'date') cmp = (av||'') > (bv||'') ? 1 : (av||'') < (bv||'') ? -1 : 0;
       else                                   cmp = (av||'').localeCompare(bv||'', 'ja');
       if (cmp !== 0) return s.dir === 'desc' ? -cmp : cmp;
@@ -8033,13 +8035,14 @@ function multiSortApply(arr, ctx, accessor) {
 
 // ── 選手管理用アクセサー
 function athSortAccessor(a, key) {
-  if (key === 'name')    return a.name||'';
-  if (key === 'kana')    return a.kana||'';
-  if (key === 'dob')     return a.dob||'';
-  if (key === 'gender')  return a.gender||'';
-  if (key === 'group')   return a.group||'';
-  if (key === 'grade')   return gradeLabel(a)||'';
-  if (key === 'event')   return '';
+  if (key === 'name')       return a.name||'';
+  if (key === 'kana')       return a.kana||'';
+  if (key === 'dob')        return a.dob||'';
+  if (key === 'enrollYear') return a.enrollYear||'';
+  if (key === 'gender')     return a.gender||'';
+  if (key === 'group')      return a.group||'';
+  if (key === 'grade')      return gradeLabel(a)||'';
+  if (key === 'event')      return '';
   return '';  // default: 登録順（sort stableのためそのまま）
 }
 // ── 大会別用アクセサー
