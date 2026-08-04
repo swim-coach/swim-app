@@ -1949,6 +1949,7 @@ body { font-family: var(--font-sans); background: #111; display: flex; align-ite
         <button class="rpt-tab active" id="rpt-tab-meet"    onclick="rptSetTab('meet')"><i class="ti ti-trophy"></i> 大会別</button>
         <button class="rpt-tab"        id="rpt-tab-athlete" onclick="rptSetTab('athlete')"><i class="ti ti-user"></i> 選手別</button>
         <button class="rpt-tab"        id="rpt-tab-pb"      onclick="rptSetTab('pb')"><i class="ti ti-medal"></i> PB一覧</button>
+        <button class="rpt-tab"        id="rpt-tab-rank"    onclick="rptSetTab('rank')"><i class="ti ti-list-numbers"></i> ランキング</button>
       </div>
     </div>
     <div class="rpt-body">
@@ -2108,6 +2109,57 @@ body { font-family: var(--font-sans); background: #111; display: flex; align-ite
           </div>
         </div>
         <div class="rpt-preview" id="rpt-pb-preview"><div class="rpt-empty">フィルターを設定してください</div></div>
+      </div>
+
+      <!-- ランキング -->
+      <div id="rpt-rank-area" style="display:none">
+        <div class="rpt-section">
+          <div class="rpt-section-title"><i class="ti ti-filter" style="color:#185FA5"></i>絞り込み</div>
+          <div class="rpt-filter-row">
+            <div class="ath-field">
+              <label>種目</label>
+              <select id="rpt-rank-event" onchange="rptRenderRank()" style="font-size:12px;padding:6px 9px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);outline:none">
+                <option value="">種目を選択してください</option>
+              </select>
+            </div>
+            <div class="ath-field">
+              <label>コース</label>
+              <select id="rpt-rank-pool" onchange="rptRenderRank()" style="font-size:12px;padding:6px 9px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);outline:none">
+                <option value="長水路">長水路</option><option value="短水路">短水路</option>
+              </select>
+            </div>
+            <div class="ath-field">
+              <label>性別</label>
+              <select id="rpt-rank-gender" onchange="rptRenderRank()" style="font-size:12px;padding:6px 9px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);outline:none">
+                <option value="">すべて</option><option value="男">男子</option><option value="女">女子</option>
+              </select>
+            </div>
+            <div class="ath-field">
+              <label>グループ</label>
+              <select id="rpt-rank-group" onchange="rptRenderRank()" style="font-size:12px;padding:6px 9px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);outline:none">
+                <option value="">すべて</option>
+              </select>
+            </div>
+          </div>
+          <div class="rpt-filter-row" style="margin-top:8px;align-items:flex-end">
+            <div class="ath-field">
+              <label>集計期間</label>
+              <select id="rpt-rank-period" onchange="rptRankTogglePeriod()" style="font-size:12px;padding:6px 9px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);outline:none">
+                <option value="all">全ての期間</option>
+                <option value="range">期間を指定</option>
+              </select>
+            </div>
+            <div class="ath-field" id="rpt-rank-range-wrap" style="display:none">
+              <label>期間</label>
+              <div style="display:flex;align-items:center;gap:6px">
+                <input type="date" id="rpt-rank-date-from" onchange="rptRenderRank()" style="font-size:12px;padding:6px 9px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary)">
+                <span style="font-size:11px;color:var(--color-text-tertiary)">〜</span>
+                <input type="date" id="rpt-rank-date-to" onchange="rptRenderRank()" style="font-size:12px;padding:6px 9px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary)">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="rpt-preview" id="rpt-rank-preview"><div class="rpt-empty">種目を選択してください</div></div>
       </div>
 
       <div id="rpt-print-area" style="display:none"></div>
@@ -8619,7 +8671,7 @@ function rptPageOpen() { rptSetTab(rptTab); rptPopulateFilters(); }
 
 function rptSetTab(tab) {
   rptTab = tab;
-  ['meet','athlete','pb'].forEach(function(t) {
+  ['meet','athlete','pb','rank'].forEach(function(t) {
     var btn = document.getElementById('rpt-tab-'+t);
     var area = document.getElementById('rpt-'+t+'-area');
     if (btn)  btn.classList.toggle('active', t === tab);
@@ -8629,6 +8681,7 @@ function rptSetTab(tab) {
   if (tab === 'meet')    rptRenderMeet();
   if (tab === 'pb')      rptRenderPB();
   if (tab === 'athlete') rptRenderAthlete();
+  if (tab === 'rank')    rptRenderRank();
 }
 
 // ── 選手名＋学年表示 ─────────────────────────────
@@ -8728,6 +8781,20 @@ function rptPopulateFilters() {
     var curG = grpSel.value;
     grpSel.innerHTML = '<option value="">すべて</option>' +
       Object.keys(groups).sort().map(function(g){ return '<option value="'+escH(g)+'"'+(g===curG?' selected':'')+'>'+escH(g)+'</option>'; }).join('');
+  }
+
+  // ランキング用：種目・グループ選択肢
+  var evSelRank = document.getElementById('rpt-rank-event');
+  if (evSelRank) {
+    var curEvR = evSelRank.value;
+    evSelRank.innerHTML = '<option value="">種目を選択してください</option>' +
+      ATH_EVENTS.filter(function(e){ return evMap[e]; }).map(function(e){ return '<option value="'+escH(e)+'"'+(e===curEvR?' selected':'')+'>'+escH(e)+'</option>'; }).join('');
+  }
+  var grpSelRank = document.getElementById('rpt-rank-group');
+  if (grpSelRank) {
+    var curGR = grpSelRank.value;
+    grpSelRank.innerHTML = '<option value="">すべて</option>' +
+      Object.keys(groups).sort().map(function(g){ return '<option value="'+escH(g)+'"'+(g===curGR?' selected':'')+'>'+escH(g)+'</option>'; }).join('');
   }
 
   // 選手別チェックボックス
@@ -9374,6 +9441,92 @@ function rptRenderPB() {
     '<div style="overflow-x:auto"><table class="rpt-table"><thead>'+header+'</thead><tbody>'+rows+'</tbody></table></div>';
 }
 
+// ── ランキング ──────────────────────────────────
+function rptRankTogglePeriod() {
+  var mode = (document.getElementById('rpt-rank-period') && document.getElementById('rpt-rank-period').value) || 'all';
+  var wrap = document.getElementById('rpt-rank-range-wrap');
+  if (wrap) wrap.style.display = mode === 'range' ? '' : 'none';
+  rptRenderRank();
+}
+
+function rptRankGetFilters() {
+  return {
+    event:  (document.getElementById('rpt-rank-event')  && document.getElementById('rpt-rank-event').value)  || '',
+    pool:   (document.getElementById('rpt-rank-pool')   && document.getElementById('rpt-rank-pool').value)   || '長水路',
+    gender: (document.getElementById('rpt-rank-gender') && document.getElementById('rpt-rank-gender').value) || '',
+    group:  (document.getElementById('rpt-rank-group')  && document.getElementById('rpt-rank-group').value)  || '',
+    period: (document.getElementById('rpt-rank-period') && document.getElementById('rpt-rank-period').value) || 'all',
+    dateFrom: (document.getElementById('rpt-rank-date-from') && document.getElementById('rpt-rank-date-from').value) || '',
+    dateTo:   (document.getElementById('rpt-rank-date-to')   && document.getElementById('rpt-rank-date-to').value)   || ''
+  };
+}
+
+// 種目・コース・性別・グループ・期間で絞り込み、選手ごとの自己ベスト（該当期間内）でランキングを作る
+function rptRankBuildList(f) {
+  var list = [];
+  athletes.forEach(function(a) {
+    if (f.gender && a.gender !== f.gender) return;
+    if (f.group  && a.group  !== f.group)  return;
+    var best = null;
+    (a.races || []).forEach(function(r) {
+      if (r.event !== f.event) return;
+      if (normalizePool(r.pool) !== f.pool) return;
+      if (!r.time) return;
+      if (f.period === 'range') {
+        if (f.dateFrom && (!r.date || r.date < f.dateFrom)) return;
+        if (f.dateTo   && (!r.date || r.date > f.dateTo))   return;
+      }
+      var sec = timeToSec(r.time);
+      if (!isFinite(sec)) return;
+      if (!best || sec < best.sec) best = { sec: sec, race: r };
+    });
+    if (best) list.push({ ath: a, race: best.race, sec: best.sec });
+  });
+  list.sort(function(x, y){ return x.sec - y.sec; });
+  return list;
+}
+
+function rptRankPeriodLabel(f) {
+  return f.period === 'range' ? ((f.dateFrom||'指定なし')+' 〜 '+(f.dateTo||'指定なし')) : '全ての期間';
+}
+
+function rptRenderRank() {
+  var f = rptRankGetFilters();
+  var prev = document.getElementById('rpt-rank-preview');
+  if (!prev) return;
+  if (!f.event) { prev.innerHTML = '<div class="rpt-empty">種目を選択してください</div>'; return; }
+
+  var list = rptRankBuildList(f);
+  if (!list.length) { prev.innerHTML = '<div class="rpt-empty">該当する記録がありません</div>'; return; }
+
+  var medal = ['🥇','🥈','🥉'];
+  var rows = list.map(function(item, i) {
+    var a = item.ath, r = item.race;
+    var waPts = getWAPoints(r.time, f.event, f.pool, a.gender);
+    var waStr = waPts !== null ? '<span style="font-size:8px;color:#5B21B6;font-weight:700"> ('+waPts+')</span>' : '';
+    var rankLabel = medal[i] || String(i+1);
+    return '<tr>'+
+      '<td style="font-weight:700;text-align:center;white-space:nowrap">'+rankLabel+'</td>'+
+      '<td style="font-weight:500;white-space:nowrap">'+escH(a.name||'')+(a.group?'<span style="font-size:9px;color:var(--color-text-tertiary);margin-left:4px">['+escH(a.group)+']</span>':'')+'</td>'+
+      '<td style="font-size:10px;color:var(--color-text-secondary);white-space:nowrap">'+escH(gradeLabel(a))+'</td>'+
+      '<td><span class="rpt-time">'+escH(normalizeTime(r.time))+'</span>'+waStr+'</td>'+
+      '<td style="font-size:10px;color:var(--color-text-secondary);white-space:nowrap">'+escH(r.meet||'')+'</td>'+
+      '<td style="font-size:10px;color:var(--color-text-tertiary);white-space:nowrap">'+escH(r.date||'')+'</td>'+
+    '</tr>';
+  }).join('');
+
+  prev.innerHTML =
+    '<div style="padding:8px 14px;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px;font-weight:500">'+
+      escH(f.event)+'　'+escH(f.pool)+'　'+(f.gender?escH(f.gender)+'子':'全選手')+(f.group?' ['+escH(f.group)+']':'')+
+      '<span style="font-size:10px;color:var(--color-text-tertiary);margin-left:8px">'+escH(rptRankPeriodLabel(f))+'</span>'+
+      '<span style="font-size:10px;color:var(--color-text-tertiary);margin-left:8px">'+list.length+'人</span>'+
+      '<span style="font-size:9px;color:#5B21B6;margin-left:8px"><i class="ti ti-brand-worldaquatics" style="font-size:9px"></i> () = WAポイント</span>'+
+    '</div>'+
+    '<div style="overflow-x:auto"><table class="rpt-table"><thead><tr>'+
+      '<th style="width:40px;text-align:center">順位</th><th>氏名</th><th style="font-size:9px">学年</th><th>タイム</th><th style="font-size:9px">大会</th><th style="font-size:9px">日付</th>'+
+    '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+
 // ── 印刷実行（全件・上部配置） ───────────────────
 function rptPrint() {
   var now  = new Date().toLocaleDateString('ja-JP');
@@ -9675,7 +9828,7 @@ function rptPrint() {
     });
 
   // ── PB一覧 ──────────────────────────────────────
-  } else {
+  } else if (rptTab === 'pb') {
     var pool3 = (document.getElementById('rpt-pb-pool') && document.getElementById('rpt-pb-pool').value) || '長水路';
     printHtml += '<div style="font-size:14pt;font-weight:700;color:#000;margin:0 0 4px">自己ベスト一覧（'+escH(pool3)+'）</div>';
     if (club) printHtml += '<div style="font-size:9pt;color:#444;margin-bottom:2px">🏫 '+escH(club)+'</div>';
@@ -9715,6 +9868,44 @@ function rptPrint() {
           }).join('')+
         '</tr>';
       }).join('')+'</tbody></table>';
+
+  // ── ランキング ──────────────────────────────────
+  } else if (rptTab === 'rank') {
+    var fR = rptRankGetFilters();
+    if (!fR.event) { alert('種目を選択してください'); return; }
+    var listR = rptRankBuildList(fR);
+    printHtml += '<div style="font-size:14pt;font-weight:700;color:#000;margin:0 0 4px">ランキング（'+escH(fR.event)+'　'+escH(fR.pool)+(fR.gender?'　'+escH(fR.gender)+'子':'')+'）</div>';
+    if (club) printHtml += '<div style="font-size:9pt;color:#444;margin-bottom:2px">🏫 '+escH(club)+'</div>';
+    printHtml += '<div style="font-size:9pt;color:#444;margin-bottom:2px">📅 集計期間: '+escH(rptRankPeriodLabel(fR))+'</div>';
+    printHtml += '<div style="font-size:8pt;color:#666;margin-bottom:4px">印刷日: '+escH(now)+'</div>';
+    printHtml += '<hr style="border:none;border-top:1.5px solid #000;margin:4px 0 10px">';
+    if (!listR.length) {
+      printHtml += '<div style="font-size:10pt;color:#666">該当する記録がありません</div>';
+    } else {
+      printHtml += '<table style="width:100%;border-collapse:collapse;font-size:9pt">'+
+        '<thead><tr>'+
+          '<th style="padding:4px 8px;border:0.5px solid #aaa;background:#f0f0f0;text-align:center;width:40px">順位</th>'+
+          '<th style="padding:4px 8px;border:0.5px solid #aaa;background:#f0f0f0;text-align:left">氏名</th>'+
+          '<th style="padding:4px 8px;border:0.5px solid #aaa;background:#f0f0f0;text-align:left">学年</th>'+
+          '<th style="padding:4px 8px;border:0.5px solid #aaa;background:#f0f0f0;text-align:left">タイム</th>'+
+          '<th style="padding:4px 8px;border:0.5px solid #aaa;background:#f0f0f0;text-align:left">大会</th>'+
+          '<th style="padding:4px 8px;border:0.5px solid #aaa;background:#f0f0f0;text-align:left">日付</th>'+
+        '</tr></thead><tbody>'+
+        listR.map(function(item, i) {
+          var a = item.ath, r = item.race;
+          var bg = i%2===0?'#fff':'#f9f9f9';
+          var waPtsR = getWAPoints(r.time, fR.event, fR.pool, a.gender);
+          var waStrR = waPtsR !== null ? ' ('+waPtsR+')' : '';
+          return '<tr style="background:'+bg+'">'+
+            '<td style="padding:3px 8px;border:0.5px solid #ddd;text-align:center;font-weight:700">'+(i+1)+'</td>'+
+            '<td style="padding:3px 8px;border:0.5px solid #ddd;font-weight:600;white-space:nowrap">'+escH(a.name||'')+(a.group?' ['+escH(a.group)+']':'')+'</td>'+
+            '<td style="padding:3px 8px;border:0.5px solid #ddd;white-space:nowrap">'+escH(gradeLabel(a))+'</td>'+
+            '<td style="padding:3px 8px;border:0.5px solid #ddd;font-weight:700;color:#185FA5;white-space:nowrap">'+escH(normalizeTime(r.time))+waStrR+'</td>'+
+            '<td style="padding:3px 8px;border:0.5px solid #ddd;white-space:nowrap">'+escH(r.meet||'')+'</td>'+
+            '<td style="padding:3px 8px;border:0.5px solid #ddd;white-space:nowrap">'+escH(r.date||'')+'</td>'+
+          '</tr>';
+        }).join('')+'</tbody></table>';
+    }
   }
 
   // 印刷専用ウィンドウを開いて印刷
