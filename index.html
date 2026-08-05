@@ -2151,8 +2151,8 @@ body { font-family: var(--font-sans); background: #111; display: flex; align-ite
                 <option value="other">その他</option>
               </select>
             </div>
-            <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;align-self:flex-end;padding-bottom:2px" title="大学生選手のうち、入学年度から4年以内（卒業未登録）の選手のみに絞り込みます">
-              <input type="checkbox" id="rpt-rank-active-only" onchange="rptRenderRank()" style="width:13px;height:13px"> 現役のみ（入学から4年以内）
+            <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;align-self:flex-end;padding-bottom:2px" title="大学生選手について、入学年度の4/1〜その4年後の3/31までの記録のみを対象にします。入学年度が未設定の選手は抽出されません。">
+              <input type="checkbox" id="rpt-rank-univ4y-only" onchange="rptRenderRank()" style="width:13px;height:13px"> 大学4年間の記録のみ
             </label>
           </div>
           <div class="rpt-filter-row" style="margin-top:8px;align-items:flex-end">
@@ -9481,7 +9481,7 @@ function rptRankGetFilters() {
     gender:     (document.getElementById('rpt-rank-gender')     && document.getElementById('rpt-rank-gender').value)     || '',
     group:      (document.getElementById('rpt-rank-group')      && document.getElementById('rpt-rank-group').value)      || '',
     schoolType: (document.getElementById('rpt-rank-schooltype') && document.getElementById('rpt-rank-schooltype').value) || '',
-    activeOnly: !!(document.getElementById('rpt-rank-active-only') && document.getElementById('rpt-rank-active-only').checked),
+    univ4yOnly: !!(document.getElementById('rpt-rank-univ4y-only') && document.getElementById('rpt-rank-univ4y-only').checked),
     period:     (document.getElementById('rpt-rank-period')     && document.getElementById('rpt-rank-period').value)     || 'all',
     dateFrom: (document.getElementById('rpt-rank-date-from') && document.getElementById('rpt-rank-date-from').value) || '',
     dateTo:   (document.getElementById('rpt-rank-date-to')   && document.getElementById('rpt-rank-date-to').value)   || '',
@@ -9495,22 +9495,18 @@ function rptRankBuildList(f) {
   athletes.forEach(function(a) {
     if (f.gender && a.gender !== f.gender) return;
     if (f.group  && a.group  !== f.group)  return;
-    if (f.schoolType) {
-      var stKey = a.schoolType || (a.enrollYear ? 'university' : 'other');
-      if (stKey !== f.schoolType) return;
+    var stKey = a.schoolType || (a.enrollYear ? 'university' : 'other');
+    if (f.schoolType && stKey !== f.schoolType) return;
+
+    // 「大学4年間の記録のみ」：入学年度が未設定の大学生選手は対象外、
+    // 対象レースも入学年度4/1〜その4年後の3/31までの範囲に限定する（入学前の記録は除外）
+    var univWinStart = null, univWinEnd = null;
+    if (f.univ4yOnly && stKey === 'university') {
+      if (!a.enrollYear) return; // 入学年度未設定は抽出しない
+      univWinStart = a.enrollYear + '-04-01';
+      univWinEnd   = (parseInt(a.enrollYear, 10) + 4) + '-04-01'; // この日付は含まない（4年目の3/31までが対象）
     }
-    if (f.activeOnly) {
-      var stKey2 = a.schoolType || (a.enrollYear ? 'university' : 'other');
-      if (stKey2 === 'university') {
-        if (a.graduated) return; // 卒業済み（OB/OG）は除外
-        if (!a.enrollYear) return; // 入学年度未設定は判定不能のため除外
-        var nowD = new Date();
-        var fyNow = nowD.getMonth() >= 3 ? nowD.getFullYear() : nowD.getFullYear() - 1;
-        var yrSinceEnroll = fyNow - parseInt(a.enrollYear, 10) + 1;
-        if (yrSinceEnroll < 1 || yrSinceEnroll > 4) return; // 入学から4年以内（1〜4年）のみ
-      }
-      // 大学生以外（小中高・その他）は現役フィルターの対象外（そのまま含める）
-    }
+
     var best = null;
     (a.races || []).forEach(function(r) {
       if (r.event !== f.event) return;
@@ -9519,6 +9515,10 @@ function rptRankBuildList(f) {
       if (f.period === 'range') {
         if (f.dateFrom && (!r.date || r.date < f.dateFrom)) return;
         if (f.dateTo   && (!r.date || r.date > f.dateTo))   return;
+      }
+      if (univWinStart) {
+        if (!r.date) return; // 日付不明のレースは判定できないため対象外
+        if (r.date < univWinStart || r.date >= univWinEnd) return; // 入学前・卒業後(5年目以降)の記録を除外
       }
       var sec = timeToSec(r.time);
       if (!isFinite(sec)) return;
@@ -9572,7 +9572,7 @@ function rptRenderRank() {
   var stLabelMap = {elementary:'小学生',junior:'中学生',high:'高校生',university:'大学生',other:'その他'};
   prev.innerHTML =
     '<div style="padding:8px 14px;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px;font-weight:500">'+
-      escH(f.event)+'　'+escH(f.pool)+'　'+(f.gender?escH(f.gender)+'子':'全選手')+(f.group?' ['+escH(f.group)+']':'')+(f.schoolType?' ['+escH(stLabelMap[f.schoolType]||f.schoolType)+']':'')+(f.activeOnly?' <span style="font-size:9px;color:#0F6E56;background:#DCFCE7;padding:1px 6px;border-radius:4px">現役のみ</span>':'')+
+      escH(f.event)+'　'+escH(f.pool)+'　'+(f.gender?escH(f.gender)+'子':'全選手')+(f.group?' ['+escH(f.group)+']':'')+(f.schoolType?' ['+escH(stLabelMap[f.schoolType]||f.schoolType)+']':'')+(f.univ4yOnly?' <span style="font-size:9px;color:#0F6E56;background:#DCFCE7;padding:1px 6px;border-radius:4px">大学4年間の記録のみ</span>':'')+
       '<span style="font-size:10px;color:var(--color-text-tertiary);margin-left:8px">'+escH(rptRankPeriodLabel(f))+'</span>'+
       '<span style="font-size:10px;color:var(--color-text-tertiary);margin-left:8px">'+escH(countLabel)+'</span>'+
       '<span style="font-size:9px;color:#5B21B6;margin-left:8px"><i class="ti ti-brand-worldaquatics" style="font-size:9px"></i> () = WAポイント</span>'+
@@ -9931,7 +9931,7 @@ function rptPrint() {
     var fullListR = rptRankBuildList(fR);
     var listR = rptRankApplyLimit(fullListR, fR);
     var stLabelMapR = {elementary:'小学生',junior:'中学生',high:'高校生',university:'大学生',other:'その他'};
-    printHtml += '<div style="font-size:14pt;font-weight:700;color:#000;margin:0 0 4px">ランキング（'+escH(fR.event)+'　'+escH(fR.pool)+(fR.gender?'　'+escH(fR.gender)+'子':'')+(fR.schoolType?'　'+escH(stLabelMapR[fR.schoolType]||fR.schoolType):'')+(fR.activeOnly?'　現役のみ':'')+(listR.length<fullListR.length?'　上位'+listR.length+'人':'')+'）</div>';
+    printHtml += '<div style="font-size:14pt;font-weight:700;color:#000;margin:0 0 4px">ランキング（'+escH(fR.event)+'　'+escH(fR.pool)+(fR.gender?'　'+escH(fR.gender)+'子':'')+(fR.schoolType?'　'+escH(stLabelMapR[fR.schoolType]||fR.schoolType):'')+(fR.univ4yOnly?'　大学4年間の記録のみ':'')+(listR.length<fullListR.length?'　上位'+listR.length+'人':'')+'）</div>';
     if (club) printHtml += '<div style="font-size:9pt;color:#444;margin-bottom:2px">🏫 '+escH(club)+'</div>';
     printHtml += '<div style="font-size:9pt;color:#444;margin-bottom:2px">📅 集計期間: '+escH(rptRankPeriodLabel(fR))+'</div>';
     printHtml += '<div style="font-size:8pt;color:#666;margin-bottom:4px">印刷日: '+escH(now)+'</div>';
