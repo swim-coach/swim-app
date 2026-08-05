@@ -9550,21 +9550,56 @@ function fiscalYearOfDateStr(dateStr) {
   return m >= 4 ? y : y - 1;
 }
 
-// OB/OGの選手について、そのレース記録が「何年生の時のものか」を付記した学年表示を返す
-// 例: OG（1年） ／ 現役選手や日付・入学年度が不明な場合は通常の学年表示のみ
-function rptRankGradeAtRace(a, raceDate) {
-  var label = gradeLabel(a);
-  if (a.graduated) {
-    var stKey = a.schoolType || (a.enrollYear ? 'university' : 'other');
-    if (stKey === 'university' && a.enrollYear && raceDate) {
-      var fy = fiscalYearOfDateStr(raceDate);
-      if (fy !== null) {
-        var yrAtRace = fy - parseInt(a.enrollYear, 10) + 1;
-        if (yrAtRace >= 1) label += '（' + yrAtRace + '年）';
-      }
-    }
+// calcSchoolAge の「指定日時点」版：生年月日から、指定日が属する年度の4/1時点の満年齢を返す
+function calcSchoolAgeAtDate(dob, dateStr) {
+  if (!dob) return null;
+  var d = new Date(dob);
+  if (isNaN(d.getTime())) return null;
+  var fy = fiscalYearOfDateStr(dateStr);
+  if (fy === null) return null;
+  var apr1 = new Date(fy, 3, 1);
+  var age = apr1.getFullYear() - d.getFullYear();
+  var beforeBirthday = (apr1.getMonth() < d.getMonth()) || (apr1.getMonth() === d.getMonth() && apr1.getDate() < d.getDate());
+  if (beforeBirthday) age--;
+  return age;
+}
+
+// calcGrade の「指定日時点」版：レース記録が「何年生の時のものか」を計算する。
+// 現在の学年（calcGrade／gradeLabel）は「今日時点」の学年を返すため、過去の記録には使えない
+// （例：2024年入学の選手による2025年2月の記録は、まだ年度内＝1年生の記録であり、今の学年で表示すると誤りになる）。
+// 大学生は入学年度とレース日から年度差で計算。卒業済み(OB/OG)でも、その記録を出した時点の学年を優先して表示する。
+// 小中高は生年月日とレース日から学齢計算。判定できない場合はnullを返し、呼び出し側で現在の学年にフォールバックする。
+function calcGradeAtDate(enrollYear, gender, schoolType, dob, graduated, dateStr) {
+  var st = schoolType || (enrollYear ? 'university' : null);
+  var fy = fiscalYearOfDateStr(dateStr);
+  if (fy === null) return null;
+
+  if (st === 'university') {
+    if (!enrollYear) return null;
+    var yr = fy - parseInt(enrollYear, 10) + 1;
+    if (yr < 1) return null; // 入学前の記録（判定不能として現在表示にフォールバック）
+    var yrLabel = yr + '年';
+    return graduated ? ((gender === '女' ? 'OG' : 'OB') + '（' + yrLabel + '）') : yrLabel;
   }
-  return label;
+
+  if (st === 'elementary' || st === 'junior' || st === 'high') {
+    var age = calcSchoolAgeAtDate(dob, dateStr);
+    if (age === null) return null;
+    var SCHOOL_START_AGE = 6;
+    var yearsInSchool = age - SCHOOL_START_AGE + 1;
+    if (st === 'elementary') return (yearsInSchool >= 1 && yearsInSchool <= 6) ? '小' + yearsInSchool : null;
+    if (st === 'junior')     { var jrYr = yearsInSchool - 6; return (jrYr >= 1 && jrYr <= 3) ? '中' + jrYr : null; }
+    if (st === 'high')       { var hsYr = yearsInSchool - 9; return (hsYr >= 1 && hsYr <= 3) ? '高' + hsYr : null; }
+  }
+
+  return null;
+}
+
+// ランキング表示用：そのレース記録を出した時点の学年を返す（計算不能な場合のみ現在の学年にフォールバック）
+// 例: OG（1年）／ 3年 ／ 高2
+function rptRankGradeAtRace(a, raceDate) {
+  var atDate = raceDate ? calcGradeAtDate(a.enrollYear, a.gender, a.schoolType, a.dob, a.graduated, raceDate) : null;
+  return atDate !== null ? atDate : gradeLabel(a);
 }
 
 function rptRenderRank() {
