@@ -9540,6 +9540,33 @@ function rptRankApplyLimit(list, f) {
   return isFinite(n) && n > 0 ? list.slice(0, n) : list;
 }
 
+// 'YYYY-MM-DD' 形式の日付文字列から年度（4月始まり）を求める（タイムゾーンずれを避けるため文字列から直接計算）
+function fiscalYearOfDateStr(dateStr) {
+  if (!dateStr) return null;
+  var parts = String(dateStr).split('-');
+  if (parts.length < 2) return null;
+  var y = parseInt(parts[0], 10), m = parseInt(parts[1], 10);
+  if (!y || !m) return null;
+  return m >= 4 ? y : y - 1;
+}
+
+// OB/OGの選手について、そのレース記録が「何年生の時のものか」を付記した学年表示を返す
+// 例: OG（1年） ／ 現役選手や日付・入学年度が不明な場合は通常の学年表示のみ
+function rptRankGradeAtRace(a, raceDate) {
+  var label = gradeLabel(a);
+  if (a.graduated) {
+    var stKey = a.schoolType || (a.enrollYear ? 'university' : 'other');
+    if (stKey === 'university' && a.enrollYear && raceDate) {
+      var fy = fiscalYearOfDateStr(raceDate);
+      if (fy !== null) {
+        var yrAtRace = fy - parseInt(a.enrollYear, 10) + 1;
+        if (yrAtRace >= 1) label += '（' + yrAtRace + '年）';
+      }
+    }
+  }
+  return label;
+}
+
 function rptRenderRank() {
   var f = rptRankGetFilters();
   var prev = document.getElementById('rpt-rank-preview');
@@ -9559,7 +9586,7 @@ function rptRenderRank() {
     return '<tr>'+
       '<td style="font-weight:700;text-align:center;white-space:nowrap">'+rankLabel+'</td>'+
       '<td style="font-weight:500;white-space:nowrap">'+escH(a.name||'')+(a.group?'<span style="font-size:9px;color:var(--color-text-tertiary);margin-left:4px">['+escH(a.group)+']</span>':'')+'</td>'+
-      '<td style="font-size:10px;color:var(--color-text-secondary);white-space:nowrap">'+escH(gradeLabel(a))+'</td>'+
+      '<td style="font-size:10px;color:var(--color-text-secondary);white-space:nowrap">'+escH(rptRankGradeAtRace(a, r.date))+'</td>'+
       '<td><span class="rpt-time">'+escH(normalizeTime(r.time))+'</span>'+waStr+'</td>'+
       '<td style="font-size:10px;color:var(--color-text-secondary);white-space:nowrap">'+escH(r.meet||'')+'</td>'+
       '<td style="font-size:10px;color:var(--color-text-tertiary);white-space:nowrap">'+escH(r.date||'')+'</td>'+
@@ -9956,7 +9983,7 @@ function rptPrint() {
           return '<tr style="background:'+bg+'">'+
             '<td style="padding:3px 8px;border:0.5px solid #ddd;text-align:center;font-weight:700">'+(i+1)+'</td>'+
             '<td style="padding:3px 8px;border:0.5px solid #ddd;font-weight:600;white-space:nowrap">'+escH(a.name||'')+(a.group?' ['+escH(a.group)+']':'')+'</td>'+
-            '<td style="padding:3px 8px;border:0.5px solid #ddd;white-space:nowrap">'+escH(gradeLabel(a))+'</td>'+
+            '<td style="padding:3px 8px;border:0.5px solid #ddd;white-space:nowrap">'+escH(rptRankGradeAtRace(a, r.date))+'</td>'+
             '<td style="padding:3px 8px;border:0.5px solid #ddd;font-weight:700;color:#185FA5;white-space:nowrap">'+escH(normalizeTime(r.time))+waStrR+'</td>'+
             '<td style="padding:3px 8px;border:0.5px solid #ddd;white-space:nowrap">'+escH(r.meet||'')+'</td>'+
             '<td style="padding:3px 8px;border:0.5px solid #ddd;white-space:nowrap">'+escH(r.date||'')+'</td>'+
