@@ -1939,7 +1939,10 @@ body { font-family: var(--font-sans); background: #111; display: flex; align-ite
         <i class="ti ti-printer" style="color:#185FA5"></i> 印刷レポート
       </span>
       <span style="font-size:11px;color:var(--color-text-tertiary)">大会別・選手別・PB一覧を印刷</span>
-      <button class="btn-p" style="margin-left:auto;font-size:11px;padding:6px 14px" onclick="rptPrint()">
+      <button id="rpt-rank-combined-print-btn" class="btn-p" style="display:none;margin-left:auto;font-size:11px;padding:6px 14px;background:#0F6E56" onclick="rptPrintRankCombined()" title="現在選択中の種目と同じ泳法（距離違い）をまとめて、A4縦1枚に印刷します">
+        <i class="ti ti-stack-2"></i> 同種目まとめて印刷（A4縦）
+      </button>
+      <button class="btn-p" style="font-size:11px;padding:6px 14px" onclick="rptPrint()">
         <i class="ti ti-printer"></i> 印刷
       </button>
     </div>
@@ -8702,6 +8705,8 @@ function rptSetTab(tab) {
     if (btn)  btn.classList.toggle('active', t === tab);
     if (area) area.style.display = t === tab ? '' : 'none';
   });
+  var combinedBtn = document.getElementById('rpt-rank-combined-print-btn');
+  if (combinedBtn) combinedBtn.style.display = tab === 'rank' ? '' : 'none';
   rptPopulateFilters();
   if (tab === 'meet')    rptRenderMeet();
   if (tab === 'pb')      rptRenderPB();
@@ -9642,6 +9647,95 @@ function rptRenderRank() {
     '<div style="overflow-x:auto"><table class="rpt-table"><thead><tr>'+
       '<th style="width:40px;text-align:center">順位</th><th>氏名</th><th style="font-size:9px">学年</th><th>タイム</th><th style="font-size:9px">大会</th><th style="font-size:9px">日付</th>'+
     '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+
+// 種目名から泳法部分を取り出す（例: '100mバタフライ' → 'バタフライ'、'400m個人メドレー' → '個人メドレー'）
+function rptRankStrokeOf(eventName) {
+  var m = String(eventName||'').match(/^\d+m(.+)$/);
+  return m ? m[1] : eventName;
+}
+
+// 選択中の種目と同じ泳法（距離違い）のランキングを、A4縦1枚にまとめて印刷する
+// 例: 50m/100m/200mバタフライ を1ページにまとめて印刷
+function rptPrintRankCombined() {
+  var f = rptRankGetFilters();
+  if (!f.event) { alert('種目を選択してください'); return; }
+
+  var stroke = rptRankStrokeOf(f.event);
+  var relatedEvents = ATH_EVENTS.filter(function(e) { return rptRankStrokeOf(e) === stroke; });
+  if (!relatedEvents.length) relatedEvents = [f.event];
+
+  var now  = new Date().toLocaleDateString('ja-JP');
+  var club = document.getElementById('pdf-club') ? (document.getElementById('pdf-club').value||'') : '';
+  var stLabelMapC = {elementary:'小学生',junior:'中学生',high:'高校生',university:'大学生',other:'その他'};
+
+  var subParts = [];
+  subParts.push(f.pool);
+  subParts.push(f.gender ? f.gender+'子' : '男女とも');
+  if (f.group)      subParts.push('['+f.group+']');
+  if (f.schoolType)  subParts.push('['+(stLabelMapC[f.schoolType]||f.schoolType)+']');
+  if (f.univ4yOnly)  subParts.push('大学4年間の記録のみ');
+  subParts.push(rptRankPeriodLabel(f));
+  if (f.limit && f.limit !== 'all') subParts.push('ベスト'+f.limit);
+
+  var printHtml = '';
+  printHtml += '<div style="font-size:15pt;font-weight:700;color:#000;margin:0 0 2px">'+escH(stroke)+' ランキング</div>';
+  if (club) printHtml += '<div style="font-size:9pt;color:#444;margin-bottom:2px">🏫 '+escH(club)+'</div>';
+  printHtml += '<div style="font-size:9pt;color:#444;margin-bottom:2px">'+escH(subParts.join('　'))+'</div>';
+  printHtml += '<div style="font-size:8pt;color:#666;margin-bottom:6px">印刷日: '+escH(now)+'</div>';
+  printHtml += '<hr style="border:none;border-top:1.5px solid #000;margin:2px 0 8px">';
+
+  relatedEvents.forEach(function(ev, idx) {
+    var fE = {}; for (var k in f) fE[k] = f[k]; fE.event = ev;
+    var fullListE = rptRankBuildList(fE);
+    var listE = rptRankApplyLimit(fullListE, fE);
+
+    printHtml += '<div style="page-break-inside:avoid;margin-bottom:10px">';
+    printHtml += '<div style="font-size:11pt;font-weight:700;color:#000;margin-bottom:3px;padding:2px 6px;background:#f0f0f0;border-left:3px solid #185FA5">'+escH(ev)+'</div>';
+    if (!listE.length) {
+      printHtml += '<div style="font-size:9pt;color:#666;padding:2px 6px 6px">該当する記録がありません</div>';
+    } else {
+      printHtml += '<table style="width:100%;border-collapse:collapse;font-size:8pt;table-layout:fixed">'+
+        '<colgroup><col style="width:8%"><col style="width:26%"><col style="width:14%"><col style="width:16%"><col style="width:24%"><col style="width:12%"></colgroup>'+
+        '<thead><tr>'+
+          '<th style="padding:2px 6px;border:0.5px solid #aaa;background:#f5f5f5;text-align:center;font-size:7pt">順位</th>'+
+          '<th style="padding:2px 6px;border:0.5px solid #aaa;background:#f5f5f5;text-align:left;font-size:7pt">氏名</th>'+
+          '<th style="padding:2px 6px;border:0.5px solid #aaa;background:#f5f5f5;text-align:left;font-size:7pt">学年</th>'+
+          '<th style="padding:2px 6px;border:0.5px solid #aaa;background:#f5f5f5;text-align:left;font-size:7pt">タイム</th>'+
+          '<th style="padding:2px 6px;border:0.5px solid #aaa;background:#f5f5f5;text-align:left;font-size:7pt">大会</th>'+
+          '<th style="padding:2px 6px;border:0.5px solid #aaa;background:#f5f5f5;text-align:left;font-size:7pt">日付</th>'+
+        '</tr></thead><tbody>'+
+        listE.map(function(item, i) {
+          var a = item.ath, r = item.race;
+          var bg = i%2===0?'#fff':'#f9f9f9';
+          var waPtsE = getWAPoints(r.time, ev, fE.pool, a.gender);
+          var waStrE = waPtsE !== null ? ' ('+waPtsE+')' : '';
+          var cell = 'padding:2px 6px;border:0.5px solid #ddd;font-size:7.5pt;overflow:hidden;white-space:nowrap';
+          return '<tr style="background:'+bg+'">'+
+            '<td style="'+cell+';text-align:center;font-weight:700">'+(i+1)+'</td>'+
+            '<td style="'+cell+';font-weight:600">'+escH(a.name||'')+(a.group?' ['+escH(a.group)+']':'')+'</td>'+
+            '<td style="'+cell+'">'+escH(rptRankGradeAtRace(a, r.date))+'</td>'+
+            '<td style="'+cell+';font-weight:700;color:#185FA5">'+escH(normalizeTime(r.time))+waStrE+'</td>'+
+            '<td style="'+cell+';max-width:0;text-overflow:ellipsis">'+escH(r.meet||'')+'</td>'+
+            '<td style="'+cell+'">'+escH(r.date||'')+'</td>'+
+          '</tr>';
+        }).join('')+'</tbody></table>';
+    }
+    printHtml += '</div>';
+  });
+
+  var win = window.open('', '_blank', 'width=900,height=1100');
+  if (!win) { alert('ポップアップがブロックされています。ブラウザの設定でポップアップを許可してください。'); return; }
+  win.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>印刷</title><style>'+
+    'body{margin:14px 16px;font-family:"Helvetica Neue",Arial,sans-serif;background:#fff;color:#000}'+
+    'table{width:100%;border-collapse:collapse}'+
+    '@page{margin:10mm;size:A4 portrait}'+
+    '@media print{body{margin:0}}'+
+    '</style></head><body>');
+  win.document.write(printHtml);
+  win.document.write('</body></html>');
+  win.document.close();
+  setTimeout(function(){ win.focus(); win.print(); }, 300);
 }
 
 // ── 印刷実行（全件・上部配置） ───────────────────
