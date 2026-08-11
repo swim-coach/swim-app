@@ -7743,7 +7743,7 @@ function renderAthDetail() {
           '<div class="ath-field"><label>タイム *（mm:ss.dd）</label><input type="text" id="race-time-'+a.id+'" placeholder="例: 2:05.12 または 55.12"></div>'+
           '<div class="ath-field"><label>順位</label><input type="text" id="race-rank-'+a.id+'" placeholder="3位"></div>'+
           '<div class="ath-field"><label>PB/SB</label><select id="race-tag-'+a.id+'"><option value="">なし</option><option value="PB">PB（自己ベスト）</option><option value="SB">SB（今季ベスト）</option></select></div>'+
-          '<div class="ath-field"><label>コーチメモ</label><input type="text" id="race-note-'+a.id+'" placeholder="スタートが良かった、折り返し改善が必要など"></div>'+
+          '<div class="ath-field"><label>区分</label><select id="race-note-'+a.id+'"><option value="">---</option><option value="予選">予選</option><option value="A決勝">A決勝</option><option value="B決勝">B決勝</option><option value="タイム決勝">タイム決勝</option></select></div>'+
           '<div class="ath-field full"><label><i class="ti ti-video" style="font-size:11px;color:#7B35C7"></i> 動画URL（YouTube限定公開など）</label><input type="url" id="race-video-'+a.id+'" placeholder="https://youtu.be/..." style="font-size:12px"></div>'+
         '</div>'+
         '<div style="display:flex;gap:7px">'+
@@ -9628,15 +9628,13 @@ function rptRenderRank() {
   var medal = ['🥇','🥈','🥉'];
   var rows = list.map(function(item, i) {
     var a = item.ath, r = item.race;
-    var waPts = getWAPoints(r.time, f.event, f.pool, a.gender);
-    var waStr = waPts !== null ? '<span style="font-size:8px;color:#5B21B6;font-weight:700"> ('+waPts+')</span>' : '';
     var rankLabel = medal[i] || String(i+1);
     return '<tr>'+
       '<td style="font-weight:700;text-align:center;white-space:nowrap">'+rankLabel+'</td>'+
-      '<td style="font-weight:500;white-space:nowrap">'+escH(a.name||'')+(a.group?'<span style="font-size:9px;color:var(--color-text-tertiary);margin-left:4px">['+escH(a.group)+']</span>':'')+'</td>'+
+      '<td style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escH(a.name||'')+(a.group?'<span style="font-size:9px;color:var(--color-text-tertiary);margin-left:4px">['+escH(a.group)+']</span>':'')+'</td>'+
       '<td style="font-size:10px;color:var(--color-text-secondary);white-space:nowrap">'+escH(rptRankGradeAtRace(a, r.date))+'</td>'+
-      '<td><span class="rpt-time">'+escH(normalizeTime(r.time))+'</span>'+waStr+'</td>'+
-      '<td style="font-size:10px;color:var(--color-text-secondary);white-space:nowrap">'+escH(r.meet||'')+'</td>'+
+      '<td><span class="rpt-time">'+escH(normalizeTime(r.time))+'</span></td>'+
+      '<td style="font-size:10px;color:var(--color-text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escH(r.meet||'')+'</td>'+
       '<td style="font-size:10px;color:var(--color-text-tertiary);white-space:nowrap">'+escH(r.date||'')+'</td>'+
     '</tr>';
   }).join('');
@@ -9650,10 +9648,9 @@ function rptRenderRank() {
       escH(f.event)+'　'+escH(f.pool)+'　'+(f.gender?escH(f.gender)+'子':'全選手')+(f.group?' ['+escH(f.group)+']':'')+(f.schoolType?' ['+escH(stLabelMap[f.schoolType]||f.schoolType)+']':'')+(f.univ4yOnly?' <span style="font-size:9px;color:#0F6E56;background:#DCFCE7;padding:1px 6px;border-radius:4px">大学4年間の記録のみ</span>':'')+
       '<span style="font-size:10px;color:var(--color-text-tertiary);margin-left:8px">'+escH(rptRankPeriodLabel(f))+'</span>'+
       '<span style="font-size:10px;color:var(--color-text-tertiary);margin-left:8px">'+escH(countLabel)+'</span>'+
-      '<span style="font-size:9px;color:#5B21B6;margin-left:8px"><i class="ti ti-brand-worldaquatics" style="font-size:9px"></i> () = WAポイント</span>'+
     '</div>'+
-    '<div style="overflow-x:auto"><table class="rpt-table"><thead><tr>'+
-      '<th style="width:40px;text-align:center">順位</th><th>氏名</th><th style="font-size:9px">学年</th><th>タイム</th><th style="font-size:9px">大会</th><th style="font-size:9px">日付</th>'+
+    '<div style="overflow-x:auto"><table class="rpt-table" style="table-layout:fixed"><thead><tr>'+
+      '<th style="width:8%;text-align:center">順位</th><th style="width:16%">氏名</th><th style="width:10%;font-size:9px">学年</th><th style="width:14%">タイム</th><th style="width:40%;font-size:9px">大会</th><th style="width:12%;font-size:9px">日付</th>'+
     '</tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
 
@@ -9704,7 +9701,7 @@ function rptPrintRankCombined() {
       printHtml += '<div style="font-size:9pt;color:#666;padding:2px 6px 6px">該当する記録がありません</div>';
     } else {
       printHtml += '<table style="width:100%;border-collapse:collapse;font-size:8pt;table-layout:fixed">'+
-        '<colgroup><col style="width:8%"><col style="width:26%"><col style="width:14%"><col style="width:16%"><col style="width:24%"><col style="width:12%"></colgroup>'+
+        '<colgroup><col style="width:7%"><col style="width:16%"><col style="width:9%"><col style="width:13%"><col style="width:43%"><col style="width:12%"></colgroup>'+
         '<thead><tr>'+
           '<th style="padding:2px 6px;border:0.5px solid #aaa;background:#f5f5f5;text-align:center;font-size:7pt">順位</th>'+
           '<th style="padding:2px 6px;border:0.5px solid #aaa;background:#f5f5f5;text-align:left;font-size:7pt">氏名</th>'+
@@ -9716,15 +9713,13 @@ function rptPrintRankCombined() {
         listE.map(function(item, i) {
           var a = item.ath, r = item.race;
           var bg = i%2===0?'#fff':'#f9f9f9';
-          var waPtsE = getWAPoints(r.time, ev, fE.pool, a.gender);
-          var waStrE = waPtsE !== null ? ' ('+waPtsE+')' : '';
-          var cell = 'padding:2px 6px;border:0.5px solid #ddd;font-size:7.5pt;overflow:hidden;white-space:nowrap';
+          var cell = 'padding:2px 6px;border:0.5px solid #ddd;font-size:7.5pt;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
           return '<tr style="background:'+bg+'">'+
             '<td style="'+cell+';text-align:center;font-weight:700">'+(i+1)+'</td>'+
             '<td style="'+cell+';font-weight:600">'+escH(a.name||'')+(a.group?' ['+escH(a.group)+']':'')+'</td>'+
             '<td style="'+cell+'">'+escH(rptRankGradeAtRace(a, r.date))+'</td>'+
-            '<td style="'+cell+';font-weight:700;color:#185FA5">'+escH(normalizeTime(r.time))+waStrE+'</td>'+
-            '<td style="'+cell+';max-width:0;text-overflow:ellipsis">'+escH(r.meet||'')+'</td>'+
+            '<td style="'+cell+';font-weight:700;color:#185FA5">'+escH(normalizeTime(r.time))+'</td>'+
+            '<td style="'+cell+'">'+escH(r.meet||'')+'</td>'+
             '<td style="'+cell+'">'+escH(r.date||'')+'</td>'+
           '</tr>';
         }).join('')+'</tbody></table>';
@@ -10103,9 +10098,10 @@ function rptPrint() {
     if (!listR.length) {
       printHtml += '<div style="font-size:10pt;color:#666">該当する記録がありません</div>';
     } else {
-      printHtml += '<table style="width:100%;border-collapse:collapse;font-size:9pt">'+
+      printHtml += '<table style="width:100%;border-collapse:collapse;font-size:9pt;table-layout:fixed">'+
+        '<colgroup><col style="width:7%"><col style="width:15%"><col style="width:9%"><col style="width:13%"><col style="width:44%"><col style="width:12%"></colgroup>'+
         '<thead><tr>'+
-          '<th style="padding:4px 8px;border:0.5px solid #aaa;background:#f0f0f0;text-align:center;width:40px">順位</th>'+
+          '<th style="padding:4px 8px;border:0.5px solid #aaa;background:#f0f0f0;text-align:center">順位</th>'+
           '<th style="padding:4px 8px;border:0.5px solid #aaa;background:#f0f0f0;text-align:left">氏名</th>'+
           '<th style="padding:4px 8px;border:0.5px solid #aaa;background:#f0f0f0;text-align:left">学年</th>'+
           '<th style="padding:4px 8px;border:0.5px solid #aaa;background:#f0f0f0;text-align:left">タイム</th>'+
@@ -10115,14 +10111,12 @@ function rptPrint() {
         listR.map(function(item, i) {
           var a = item.ath, r = item.race;
           var bg = i%2===0?'#fff':'#f9f9f9';
-          var waPtsR = getWAPoints(r.time, fR.event, fR.pool, a.gender);
-          var waStrR = waPtsR !== null ? ' ('+waPtsR+')' : '';
           return '<tr style="background:'+bg+'">'+
             '<td style="padding:3px 8px;border:0.5px solid #ddd;text-align:center;font-weight:700">'+(i+1)+'</td>'+
-            '<td style="padding:3px 8px;border:0.5px solid #ddd;font-weight:600;white-space:nowrap">'+escH(a.name||'')+(a.group?' ['+escH(a.group)+']':'')+'</td>'+
+            '<td style="padding:3px 8px;border:0.5px solid #ddd;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escH(a.name||'')+(a.group?' ['+escH(a.group)+']':'')+'</td>'+
             '<td style="padding:3px 8px;border:0.5px solid #ddd;white-space:nowrap">'+escH(rptRankGradeAtRace(a, r.date))+'</td>'+
-            '<td style="padding:3px 8px;border:0.5px solid #ddd;font-weight:700;color:#185FA5;white-space:nowrap">'+escH(normalizeTime(r.time))+waStrR+'</td>'+
-            '<td style="padding:3px 8px;border:0.5px solid #ddd;white-space:nowrap">'+escH(r.meet||'')+'</td>'+
+            '<td style="padding:3px 8px;border:0.5px solid #ddd;font-weight:700;color:#185FA5;white-space:nowrap">'+escH(normalizeTime(r.time))+'</td>'+
+            '<td style="padding:3px 8px;border:0.5px solid #ddd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escH(r.meet||'')+'</td>'+
             '<td style="padding:3px 8px;border:0.5px solid #ddd;white-space:nowrap">'+escH(r.date||'')+'</td>'+
           '</tr>';
         }).join('')+'</tbody></table>';
