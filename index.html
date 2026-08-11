@@ -8544,9 +8544,15 @@ function athEditRaceInline(athId, idx) {
     return '<option value="'+e+'"'+(r.event===e?' selected':'')+'>'+e+'</option>';
   }).join('');
 
-  var roundOpts = ['予選','A決勝','B決勝','タイム決勝'].map(function(n){
-    var cur = (r.note||'').replace('（リレー）','');
-    return '<option value="'+n+'"'+(r.note===n?' selected':'')+'>'+n+'</option>';
+  // 区分（予選/決勝）選択肢：先頭に「---（未設定・不明）」を追加。
+  // また、CSV等からの取り込みで既に一覧にない区分（準決勝・その他など）が入っている場合は、
+  // それを選択肢に追加しておくことで、保存時に気づかず上書き・消失させてしまうのを防ぐ。
+  var curNote = r.note || '';
+  var roundList = ['', '予選', 'A決勝', 'B決勝', 'タイム決勝'];
+  if (curNote && roundList.indexOf(curNote) === -1) roundList.push(curNote);
+  var roundOpts = roundList.map(function(n){
+    var label = n === '' ? '---' : n;
+    return '<option value="'+escH(n)+'"'+(curNote===n?' selected':'')+'>'+escH(label)+'</option>';
   }).join('');
 
   // インライン編集行に差し替え
@@ -8612,7 +8618,9 @@ function athSaveRaceInline(athId, idx) {
   var newPool  = (document.getElementById('re-pool-' +athId+'-'+idx)||{}).value || r.pool;
   var newTime  = (document.getElementById('re-time-' +athId+'-'+idx)||{}).value || '';
   var newRank  = (document.getElementById('re-rank-' +athId+'-'+idx)||{}).value || '';
-  var newNote  = (document.getElementById('re-note-' +athId+'-'+idx)||{}).value || r.note;
+  // 「---」（未設定）を選んだ場合、空文字がそのまま保存されるようにする（|| r.noteで元の値に戻ってしまわないように）
+  var newNoteEl = document.getElementById('re-note-'+athId+'-'+idx);
+  var newNote  = newNoteEl ? newNoteEl.value : (r.note||'');
   var newMeet  = (document.getElementById('re-meet-' +athId+'-'+idx)||{}).value || '';
   var newDate  = (document.getElementById('re-date-' +athId+'-'+idx)||{}).value || '';
   var newTeamEl = document.getElementById('re-team-'+athId+'-'+idx);
