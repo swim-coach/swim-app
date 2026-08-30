@@ -129,7 +129,7 @@
     font-size:13px;font-weight:700;color:var(--sub);cursor:pointer;transition:all .18s cubic-bezier(.4,0,.2,1);text-align:center}
   .land-btn:active{transform:scale(0.96)}
   .land-btn.active{background:linear-gradient(135deg,#EEF2FF,#E0E7FF);border-color:#C7D2FE;color:#4338CA;box-shadow:0 4px 10px -4px rgba(67,56,202,0.25)}
-  .land-btn.fixed{padding-right:8px}
+  .land-btn.land-fixed{padding-right:8px}
   .land-del-x{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--red);
     color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;
     cursor:pointer;border:2px solid var(--bg);line-height:1;z-index:2;box-shadow:0 2px 6px rgba(185,28,28,0.35)}
@@ -1752,7 +1752,7 @@
 
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'land-btn' + (t === FIXED_LAND_TYPE ? ' fixed' : '');
+      btn.className = 'land-btn' + (t === FIXED_LAND_TYPE ? ' land-fixed' : '');
       btn.dataset.val = t;
       btn.textContent = t;
       btn.classList.toggle('active', state.landTypes.indexOf(t) >= 0);
