@@ -1054,7 +1054,14 @@
       const saved = localStorage.getItem(LS_LAND_TYPES_KEY);
       if (saved) {
         const arr = JSON.parse(saved);
-        if (Array.isArray(arr) && arr.length) return arr;
+        if (Array.isArray(arr) && arr.length) {
+          // 保存済みリストであっても、固定項目Strengthが欠けていれば自動で復元して保存し直す
+          if (arr.indexOf(FIXED_LAND_TYPE) < 0) {
+            arr.unshift(FIXED_LAND_TYPE);
+            saveLandTypes(arr);
+          }
+          return arr;
+        }
       }
     } catch (e) {}
     // localStorageに保存がなければ、URLパラメータ → デフォルトの順で初期化
