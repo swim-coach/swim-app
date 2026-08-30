@@ -1730,6 +1730,20 @@
 
 
   function renderLandGrid() {
+    // 描画のたびに毎回チェック：Strengthが欠けていれば復元、重複があれば1つにまとめる（原因を問わず自己修復する）
+    let landTypesFixed = false;
+    if (landTypes.indexOf(FIXED_LAND_TYPE) < 0) {
+      landTypes.unshift(FIXED_LAND_TYPE);
+      landTypesFixed = true;
+    }
+    const dedupedLandTypes = landTypes.filter((t, i) => landTypes.indexOf(t) === i);
+    if (dedupedLandTypes.length !== landTypes.length) {
+      landTypes.length = 0;
+      landTypes.push(...dedupedLandTypes);
+      landTypesFixed = true;
+    }
+    if (landTypesFixed) saveLandTypes(landTypes);
+
     const landGrid = document.getElementById('land-grid');
     landGrid.innerHTML = '';
     landTypes.forEach(t => {
