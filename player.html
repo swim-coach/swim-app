@@ -2722,7 +2722,13 @@
       return `<text x="${xy[i][0].toFixed(1)}" y="${H - 5}" font-size="9" fill="var(--sub)" text-anchor="${anchor}">${d}</text>`;
     }).join('');
     const last = points[points.length - 1];
-    const lastLabel = `<text x="${xy[xy.length-1][0].toFixed(1)}" y="${(xy[xy.length-1][1]-8).toFixed(1)}" font-size="10" font-weight="700" fill="${color}" text-anchor="end">${last.value}</text>`;
+    const lastX = xy[xy.length - 1][0];
+    const lastY = xy[xy.length - 1][1];
+    // データが1件だけ（＝最後の点が左端）の場合、右寄せ（text-anchor="end"）のままだと
+    // 数値がグラフの左外にはみ出して見切れてしまうため、その場合だけ点の右側に表示する
+    const lastAnchor = lastX < W * 0.2 ? 'start' : 'end';
+    const lastLabelX = lastAnchor === 'start' ? lastX + 6 : lastX;
+    const lastLabel = `<text x="${lastLabelX.toFixed(1)}" y="${(lastY-8).toFixed(1)}" font-size="10" font-weight="700" fill="${color}" text-anchor="${lastAnchor}">${last.value}</text>`;
     return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
       <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>
       ${dots}
