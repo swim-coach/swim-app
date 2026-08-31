@@ -2845,10 +2845,13 @@
     return Array.isArray(e.landTypes) ? e.landTypes : (e.landType ? [e.landType] : []);
   }
 
-  // 陸上トレーニング「Strength」を含み、種目記録があるエントリーだけを抽出（新しい日付順）
+  // 種目記録（strengthLog）があるエントリーだけを抽出（新しい日付順）
+  // ※以前は「landTypesにStrengthが含まれているか」も条件にしていたが、
+  //   陸上トレーニング種別一覧側の不具合でStrengthタグが正しく保存されていない過去記録があっても
+  //   実際に記録されたセットデータ自体は履歴・グラフに表示されるよう、strengthLogの有無だけで判定する。
   function getStrengthDays() {
     return Object.entries(allHistoryEntries)
-      .filter(([, e]) => e.session === 'LAND' && getEntryLandTypes(e).indexOf('Strength') >= 0 && Array.isArray(e.strengthLog) && e.strengthLog.length)
+      .filter(([, e]) => Array.isArray(e.strengthLog) && e.strengthLog.length)
       .map(([key, entry]) => ({ key, entry, date: entry.date || '' }))
       .sort((a, b) => b.date.localeCompare(a.date));
   }
